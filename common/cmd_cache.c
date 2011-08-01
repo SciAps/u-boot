@@ -59,6 +59,8 @@ int do_dcache ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			break;
 		case 1:	dcache_enable ();
 			break;
+		default:
+			return cmd_usage(cmdtp);
 		}
 		/* FALL TROUGH */
 	case 1:			/* get status */

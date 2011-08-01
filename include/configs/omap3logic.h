@@ -158,6 +158,8 @@
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands	*/
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
+#define CONFIG_CMD_CACHE	/* Cache control		*/
+#define CONFIG_CMD_TIME		/* time command			*/
 
 #define BOARD_LATE_INIT
 
@@ -246,7 +248,7 @@
 	"loadaddr=0x81000000\0" \
 	"serverip=192.168.3.5\0" \
 	"usbtty=cdc_acm\0" \
-	"consoledevice=ttyS0\0" \
+	"consoledevice=ttyO0\0" \
 	"display=15\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
 	"dump_bootargs=echo 'Bootargs: '; echo $bootargs\0" \

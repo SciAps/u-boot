@@ -29,6 +29,7 @@
  */
 #include <common.h>
 #include <netdev.h>
+#include <nand.h>
 #include <asm/io.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/mux.h>
@@ -128,7 +129,7 @@ int board_init(void)
 	setup_nand_settings();
 
 	/* board id for Linux (override later) */
-	gd->bd->bi_arch_number = MACH_TYPE_DM3730_TORPEDO;
+	gd->bd->bi_arch_number = -1;
 	/* boot param addr */
 	gd->bd->bi_boot_params = (OMAP34XX_SDRC_CS0 + 0x100);
 
@@ -137,8 +138,13 @@ int board_init(void)
 
 int board_late_init(void)
 {
-#ifdef CONFIG_CMD_NAND_LOGIC_UNLOCK
+#ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	nand_unlock(&nand_info[0], 0x0, nand_info[0].size);
+#endif
+#ifdef CONFIG_CMD_CACHE
+	dcache_enable();
+	printf ("Data (writethrough) Cache is %s\n",
+		dcache_status() ? "ON" : "OFF");
 #endif
 	return 0;
 }

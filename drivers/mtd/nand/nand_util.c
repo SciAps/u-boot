@@ -337,8 +337,11 @@ int nand_unlock(struct mtd_info *mtd, ulong start, ulong length)
 	int status;
 	int page;
 	struct nand_chip *chip = mtd->priv;
+
+#if 0
 	printf ("nand_unlock: start: %08x, length: %d!\n",
 		(int)start, (int)length);
+#endif
 
 	/* select the NAND device */
 	chipnr = (int)(start >> chip->chip_shift);

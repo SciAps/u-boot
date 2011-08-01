@@ -298,8 +298,18 @@ static void nand_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len)
 
 	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %d words\n", len);
 
-	for (i = 0; i < len; i++)
-		p[i] = readw(chip->IO_ADDR_R);
+	for (i = 0; i < len; i+=8) {
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+		*p++ = readw(chip->IO_ADDR_R);
+	}
+	for (; i < len; ++i)
+		*p++ = readw(chip->IO_ADDR_R);
 }
 
 /**

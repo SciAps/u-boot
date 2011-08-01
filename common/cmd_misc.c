@@ -53,3 +53,46 @@ U_BOOT_CMD(
 	"N\n"
 	"    - delay execution for N seconds (N is _decimal_ !!!)"
 );
+
+#ifdef CONFIG_CMD_TIME
+int do_time (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	ulong start;
+	ulong delta;
+	cmd_tbl_t *cmdtp2;
+	int ret;
+	unsigned int secs, msecs;
+
+	if (argc < 2) {
+		cmd_usage(cmdtp);
+		return 1;
+	}
+
+	cmdtp2 = find_cmd(argv[1]);
+	if (!cmdtp2) {
+		printf ("Unknown command '%s' - try help\n", argv[1]);
+		return 1;
+	}
+
+	start = get_timer(0);
+
+	/* Execute command */
+	ret = (cmdtp2->cmd)(cmdtp2, flag, argc-1, argv+1);
+
+	delta = get_timer(start);
+
+	secs = (delta * 1000) / CONFIG_SYS_HZ;
+	msecs = secs % 1000;
+	secs /= 1000;
+
+	printf("'%s' took %u.%03u seconds\n", argv[1], secs, msecs);
+	return ret;
+}
+
+U_BOOT_CMD(
+	time ,    CONFIG_SYS_MAXARGS,    1,     do_time,
+	"time execution of command",
+	"command to time\n"
+	"    - time execution of command in seconds"
+);
+#endif
