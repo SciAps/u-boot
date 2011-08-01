@@ -63,7 +63,13 @@ void sr32(void *, u32, u32, u32);
 u32 wait_on_value(u32, u32, void *, u32);
 void sdelay(unsigned long);
 void make_cs1_contiguous(void);
-void omap_nand_switch_ecc(int);
+enum omap_nand_ecc_mode {
+	OMAP_ECC_SOFT = 1,
+	OMAP_ECC_HW,
+	OMAP_ECC_CHIP,
+};
+void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode);
+int omap_nand_chip_has_ecc(void);
 void power_init_r(void);
 void dieid_num_r(void);
 

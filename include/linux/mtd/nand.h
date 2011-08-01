@@ -88,12 +88,19 @@ extern void nand_wait_ready(struct mtd_info *mtd);
 #define NAND_CMD_READID		0x90
 #define NAND_CMD_PARAM		0xec
 #define NAND_CMD_ERASE2		0xd0
+#define NAND_CMD_SETFEATURE	0xee
+#define NAND_CMD_GETFEATURE	0xef
 #define NAND_CMD_RESET		0xff
 
 /* Extended commands for large page devices */
 #define NAND_CMD_READSTART	0x30
 #define NAND_CMD_RNDOUTSTART	0xE0
 #define NAND_CMD_CACHEDPROG	0x15
+
+/* Extended commands for ONFI devices */
+#define NAND_CMD_READ_PARAM	0xec
+#define NAND_CMD_GET_FEATURES	0xee
+#define NAND_CMD_SET_FEATURES	0xef
 
 /* Extended commands for AG-AND device */
 /*
@@ -132,6 +139,7 @@ typedef enum {
 	NAND_ECC_HW,
 	NAND_ECC_HW_SYNDROME,
 	NAND_ECC_HW_OOB_FIRST,
+	NAND_ECC_CHIP,
 } nand_ecc_modes_t;
 
 /*
@@ -437,6 +445,10 @@ struct nand_buffers {
 struct nand_chip {
 	void  __iomem	*IO_ADDR_R;
 	void  __iomem	*IO_ADDR_W;
+
+	uint8_t		maf_id, dev_id;	/* manufacturer/device identifier */
+	uint8_t		has_chip_ecc;	/* !0 if chip has intern ECC engine */
+	uint8_t		ecc_status;	/* status of read w/ECC */
 
 	uint8_t		(*read_byte)(struct mtd_info *mtd);
 	u16		(*read_word)(struct mtd_info *mtd);

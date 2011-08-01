@@ -637,6 +637,17 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		return 1;
 	}
 
+#ifdef CONFIG_MTD_DEBUG
+	if (strcmp(cmd, "debug") == 0) {
+		if (argc == 3) {
+			ulong val = simple_strtoul(argv[2], NULL, 16);
+			mtd_debug_verbose = val;
+		} else
+			printf("%d\n", mtd_debug_verbose);
+		return 1;
+	}
+#endif
+
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	if (strcmp(cmd, "lock") == 0) {
 		int tight = 0;
@@ -717,6 +728,10 @@ U_BOOT_CMD(
 	"    first device.\n"
 	"nand env.oob set off|partition - set enviromnent offset\n"
 	"nand env.oob get - get environment offset"
+#endif
+#ifdef CONFIG_MTD_DEBUG
+	"\n"
+	"nand debug [level] - display or set the MTD debug level"
 #endif
 );
 

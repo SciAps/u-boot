@@ -26,11 +26,13 @@
 #include <asm/errno.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/omap_gpmc.h>
+#include <asm/arch/sys_proto.h>
 #include <linux/mtd/nand_ecc.h>
 #include <nand.h>
 
 static uint8_t cs;
 static struct nand_ecclayout hw_nand_oob = GPMC_NAND_HW_ECC_LAYOUT;
+static struct nand_ecclayout chip_nand_oob = GPMC_NAND_CHIP_ECC_LAYOUT;
 
 /*
  * omap_nand_hwcontrol - Set the address pointers corretly for the
@@ -57,8 +59,17 @@ static void omap_nand_hwcontrol(struct mtd_info *mtd, int32_t cmd,
 		break;
 	}
 
-	if (cmd != NAND_CMD_NONE)
+	if (cmd != NAND_CMD_NONE) {
+#ifdef CONFIG_MTD_DEBUG
+		if (this->IO_ADDR_W == &gpmc_cfg->cs[cs].nand_cmd)
+			MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND C: %02x\n", cmd & 0xff);
+		else if (this->IO_ADDR_W == &gpmc_cfg->cs[cs].nand_adr)
+			MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND A: %02x\n", cmd & 0xff);
+		else if (this->IO_ADDR_W == &gpmc_cfg->cs[cs].nand_dat)
+			MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND D: %02x\n", cmd & 0xff);
+#endif
 		writeb(cmd, this->IO_ADDR_W);
+	}
 }
 
 /*
@@ -156,6 +167,25 @@ static int omap_correct_data(struct mtd_info *mtd, uint8_t *dat,
 	return 0;
 }
 
+static int omap_correct_chip_hwecc(struct mtd_info *mtd, u_char *dat,
+				u_char *read_ecc, u_char *calc_ecc)
+{
+	struct nand_chip *chip;
+
+	chip = mtd->priv;
+
+	printf("%s: ecc_status %02x\n", __func__, chip->ecc_status);
+	/* We stored the read status in info->ecc_status in the read.
+	   If bit 0 is set, then there was an uncorrectable ECC error.
+	   If bit 3 is set, then there was a correctable error (up to
+	   four bits of correction). */
+	if (chip->ecc_status & 0x01)
+		return -1;
+	if (chip->ecc_status & 0x08)
+		return 4;
+	return 0;
+}
+
 /*
  *  omap_calculate_ecc - Generate non-inverted ECC bytes.
  *
@@ -192,6 +222,14 @@ static int omap_calculate_ecc(struct mtd_info *mtd, const uint8_t *dat,
 	return 0;
 }
 
+static int omap_calculate_chip_hwecc(struct mtd_info *mtd, const u_char *dat,
+				u_char *ecc_code)
+{
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:\n", __func__);
+	return 0;
+}
+
+
 /*
  * omap_enable_ecc - This function enables the hardware ecc functionality
  * @mtd:        MTD device structure
@@ -224,14 +262,302 @@ static void omap_enable_hwecc(struct mtd_info *mtd, int32_t mode)
 	}
 }
 
+static void omap_enable_chip_hwecc(struct mtd_info *mtd, int mode)
+{
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:\n", __func__);
+}
+
+/*
+ * omap_nand_chip_has_ecc - return true if chip has internal ECC
+ */
+int omap_nand_chip_has_ecc(void)
+{
+	struct nand_chip *chip;
+	struct mtd_info *mtd;
+	int		i;
+	uint8_t		ident[5];
+
+	if (nand_curr_device < 0 ||
+	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
+	    !nand_info[nand_curr_device].name) {
+		printf("Error: Can't switch ecc, no devices available\n");
+		return 0;
+	}
+
+	mtd = &nand_info[nand_curr_device];
+	chip = mtd->priv;
+
+#if 1
+	chip->select_chip(mtd, 0);
+	chip->cmdfunc(mtd, NAND_CMD_RESET, -1, -1);
+	chip->cmdfunc(mtd, NAND_CMD_READID, 0x00, -1);
+
+	/* Wait for the chip to get the ID ready */
+	ndelay(100);
+
+	for (i=0; i<2; ++i)
+		ident[i] = chip->read_byte(mtd);
+
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:%d %02x %02x\n", __FUNCTION__, __LINE__, ident[0], ident[1]);
+	if (ident[0] == NAND_MFR_MICRON) {
+		for (i=2; i<5; ++i)
+			ident[i] = chip->read_byte(mtd);
+		MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:%d %02x %02x %02x\n", __FUNCTION__, __LINE__, ident[2], ident[3], ident[4]);
+		if (ident[4] & 0x3)
+			chip->has_chip_ecc = 1;
+	}
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: has_chip_ecc %d\n", __FUNCTION__, chip->has_chip_ecc);
+#else
+	if (nand->maf_id == NAND_MFR_MICRON) {
+		switch(nand->dev_id) {
+		case 0x2c:
+		case 0xdc:
+		case 0xcc:
+		case 0xac:
+		case 0xbc:
+		case 0xa3:
+		case 0xb3:
+		case 0xd3:
+		case 0xc3:
+			nand->has_chip_ecc = 1;
+			return 1;
+		default:
+			break;
+		}
+	}
+#endif
+	return chip->has_chip_ecc;
+}
+
+
+static void micron_set_chip_ecc(struct mtd_info *mtd, int enable)
+{
+	uint8_t params[4];
+
+	MTDDEBUG(MTD_DEBUG_LEVEL3,"%s:%d enable %d\n", __FUNCTION__, __LINE__, enable);
+
+	memset(params, 0x00, sizeof(params));
+	if (enable)
+		params[0] = 0x08;
+	nand_set_features(mtd, 0x90, params);
+
+#if 1
+	nand_get_features(mtd, 0x90, params);
+	MTDDEBUG(MTD_DEBUG_LEVEL4,"%s: %02x %02x %02x %02x\n", __FUNCTION__, params[0], params[1], params[2], params[3]);
+#endif
+}
+
+/**
+ * nand_read_oob_chipecc - read; get status to seeif chip ECC error
+ * @mtd:	mtd info structure
+ * @chip:	nand chip info structure
+ * @page:	page number to read
+ * @sndcmd:	flag whether to issue read command or not
+ */
+static int omap_read_oob_chipecc(struct mtd_info *mtd, struct nand_chip *chip,
+			     int page, int sndcmd)
+{
+	struct nand_chip *nand;
+
+	nand = mtd->priv;
+
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: page = %d, len = %i\n",
+			__func__, page, mtd->oobsize);
+
+	if (sndcmd) {
+		chip->cmdfunc(mtd, NAND_CMD_READOOB, 0, page);
+		sndcmd = 0;
+	}
+
+	/* Send the status command */
+	omap_nand_hwcontrol(mtd, NAND_CMD_STATUS,
+		NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+	/* Switch to data access */
+	omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+		NAND_NCE | NAND_CTRL_CHANGE);
+	chip->ecc_status = chip->read_byte(mtd);
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: ecc_status %02x\n", __func__, chip->ecc_status);
+	if (chip->ecc_status & (0x8|0x1)) {
+		MTDDEBUG(MTD_DEBUG_LEVEL3, "%s:%d page %d ecc_status %02x\n", __FUNCTION__, __LINE__, page, chip->ecc_status);
+		if (chip->ecc_status & 0x1)
+			mtd->ecc_stats.failed++;
+		else if (chip->ecc_status & 0x80)
+			mtd->ecc_stats.corrected += 4;
+	}
+
+	/* Send the read prefix */
+	omap_nand_hwcontrol(mtd, NAND_CMD_READ0,
+		NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+	/* Switch to data access */
+	omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+		NAND_NCE | NAND_CTRL_CHANGE);
+	
+	chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
+	return sndcmd;
+}
+
+/**
+ * omap_nand_command_lp - Send command to NAND large page device
+ * @mtd:	MTD device structure
+ * @command:	the command to be sent
+ * @column:	the column address for this command, -1 if none
+ * @page_addr:	the page address for this command, -1 if none
+ *
+ * Send command to NAND device. This is the version for the new large page
+ * devices We dont have the separate regions as we have in the small page
+ * devices.  We must emulate NAND_CMD_READOOB to keep the code compatible.
+ */
+static void omap_nand_command_lp(struct mtd_info *mtd, unsigned int command,
+			    int column, int page_addr)
+{
+	register struct nand_chip *chip = mtd->priv;
+
+	/* Emulate NAND_CMD_READOOB */
+	if (command == NAND_CMD_READOOB) {
+		column += mtd->writesize;
+		command = NAND_CMD_READ0;
+	}
+
+	/* Command latch cycle */
+	omap_nand_hwcontrol(mtd, command & 0xff,
+		       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+
+	if (column != -1 || page_addr != -1) {
+		int ctrl = NAND_CTRL_CHANGE | NAND_NCE | NAND_ALE;
+
+		/* Serially input address */
+		if (column != -1) {
+			/* Adjust columns for 16 bit buswidth */
+			if (chip->options & NAND_BUSWIDTH_16)
+				column >>= 1;
+			omap_nand_hwcontrol(mtd, column, ctrl);
+			ctrl &= ~NAND_CTRL_CHANGE;
+			omap_nand_hwcontrol(mtd, column >> 8, ctrl);
+		}
+		if (page_addr != -1) {
+			omap_nand_hwcontrol(mtd, page_addr, ctrl);
+			omap_nand_hwcontrol(mtd, page_addr >> 8,
+				       NAND_NCE | NAND_ALE);
+			/* One more address cycle for devices > 128MiB */
+			if (chip->chipsize > (128 << 20))
+				omap_nand_hwcontrol(mtd, page_addr >> 16,
+					       NAND_NCE | NAND_ALE);
+		}
+	}
+	omap_nand_hwcontrol(mtd, NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
+
+	/*
+	 * program and erase have their own busy handlers
+	 * status, sequential in, and deplete1 need no delay
+	 */
+	switch (command) {
+
+	case NAND_CMD_CACHEDPROG:
+	case NAND_CMD_PAGEPROG:
+	case NAND_CMD_ERASE1:
+	case NAND_CMD_ERASE2:
+	case NAND_CMD_SEQIN:
+	case NAND_CMD_RNDIN:
+	case NAND_CMD_STATUS:
+	case NAND_CMD_DEPLETE1:
+		return;
+
+		/*
+		 * read error status commands require only a short delay
+		 */
+	case NAND_CMD_STATUS_ERROR:
+	case NAND_CMD_STATUS_ERROR0:
+	case NAND_CMD_STATUS_ERROR1:
+	case NAND_CMD_STATUS_ERROR2:
+	case NAND_CMD_STATUS_ERROR3:
+		udelay(chip->chip_delay);
+		return;
+
+	case NAND_CMD_RESET:
+		if (chip->dev_ready)
+			break;
+		udelay(chip->chip_delay);
+		omap_nand_hwcontrol(mtd, NAND_CMD_STATUS,
+			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+		omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+			       NAND_NCE | NAND_CTRL_CHANGE);
+		while (!(chip->read_byte(mtd) & NAND_STATUS_READY)) ;
+		return;
+
+	case NAND_CMD_RNDOUT:
+		/* No ready / busy check necessary */
+		omap_nand_hwcontrol(mtd, NAND_CMD_RNDOUTSTART,
+			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+		omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+			       NAND_NCE | NAND_CTRL_CHANGE);
+		return;
+
+	case NAND_CMD_READ0:
+
+		/* Send the read start */
+		omap_nand_hwcontrol(mtd, NAND_CMD_READSTART,
+			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+		omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+			       NAND_NCE | NAND_CTRL_CHANGE);
+
+		/* This applies to read commands */
+	default:
+		/*
+		 * If we don't have access to the busy pin, we apply the given
+		 * command delay
+		 */
+		if (!chip->dev_ready) {
+			udelay(chip->chip_delay);
+			goto ready_exit;
+		}
+	}
+
+	/* Apply this short delay always to ensure that we do wait tWB in
+	 * any case on any machine. */
+	ndelay(100);
+
+	nand_wait_ready(mtd);
+
+ready_exit:
+	/* If the chip has internal ECC, then we need to read the status
+	   to determin if there's an ECC error - capture it for handling by
+	   omap_nand_correct_chip_hwecc() later */
+	if (command == NAND_CMD_READ0) {
+		if (chip->has_chip_ecc) {
+
+			/* Send the status command */
+			omap_nand_hwcontrol(mtd, NAND_CMD_STATUS,
+				NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+			/* Switch to data access */
+			omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+				NAND_NCE | NAND_CTRL_CHANGE);
+			chip->ecc_status = chip->read_byte(mtd);
+			MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: ecc_status %02x\n", __func__, chip->ecc_status);
+#if 0
+			if (chip->ecc_status & (0x8|0x1))
+				printk("%s:%d page %d column %d ecc_status %02x\n", __FUNCTION__, __LINE__, page_addr, column, chip->ecc_status);
+#endif
+
+			/* Send the read prefix */
+			omap_nand_hwcontrol(mtd, NAND_CMD_READ0,
+				NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+			/* Switch to data access */
+			omap_nand_hwcontrol(mtd, NAND_CMD_NONE,
+				NAND_NCE | NAND_CTRL_CHANGE);
+
+		}
+	}
+		
+}
+
 /*
  * omap_nand_switch_ecc - switch the ECC operation b/w h/w ecc and s/w ecc.
  * The default is to come up on s/w ecc
  *
- * @hardware - 1 -switch to h/w ecc, 0 - s/w ecc
+ * @hardware - 1 -switch to h/w ecc, 0 - s/w ecc, 2 - chip ecc
  *
  */
-void omap_nand_switch_ecc(int32_t hardware)
+void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 {
 	struct nand_chip *nand;
 	struct mtd_info *mtd;
@@ -258,7 +584,7 @@ void omap_nand_switch_ecc(int32_t hardware)
 	nand->ecc.calculate = NULL;
 
 	/* Setup the ecc configurations again */
-	if (hardware) {
+	if (mode == OMAP_ECC_HW) {
 		nand->ecc.mode = NAND_ECC_HW;
 		nand->ecc.layout = &hw_nand_oob;
 		nand->ecc.size = 512;
@@ -268,12 +594,38 @@ void omap_nand_switch_ecc(int32_t hardware)
 		nand->ecc.calculate = omap_calculate_ecc;
 		omap_hwecc_init(nand);
 		printf("HW ECC selected\n");
-	} else {
+		if (nand->has_chip_ecc)
+			micron_set_chip_ecc(mtd, 0);
+	} else if (mode == OMAP_ECC_SOFT) {
 		nand->ecc.mode = NAND_ECC_SOFT;
 		/* Use mtd default settings */
 		nand->ecc.layout = NULL;
 		printf("SW ECC selected\n");
-	}
+		if (nand->has_chip_ecc)
+			micron_set_chip_ecc(mtd, 0);
+	} else if (mode == OMAP_ECC_CHIP) {
+		if (!nand->has_chip_ecc) {
+			printf("NAND: Chip does not have internal ECC!\n");
+			return;
+		}
+		nand->ecc.bytes = 0;
+		nand->ecc.size = 2048;
+		nand->ecc.calculate = omap_calculate_chip_hwecc;
+		nand->ecc.hwctl = omap_enable_chip_hwecc;
+		nand->ecc.correct = omap_correct_chip_hwecc;
+		nand->ecc.read_oob = omap_read_oob_chipecc;
+		nand->ecc.mode = NAND_ECC_CHIP; /* internal to chip */
+		nand->ecc.layout = &chip_nand_oob;
+		if (nand->options & NAND_BUSWIDTH_16)
+			nand->cmdfunc = omap_nand_command_lp;
+		else
+			printf("%s: Huh? not 16-bit wide\n", __FUNCTION__);
+		micron_set_chip_ecc(mtd, 1);
+		printf("NAND: Internal to NAND ECC selected\n");
+	} else {
+		printf("NAND: unknown ECC mode %d\n", mode);
+		return;
+ 	}
 
 	/* Update NAND handling after ECC mode switch */
 	nand_scan_tail(mtd);
@@ -335,6 +687,11 @@ int board_nand_init(struct nand_chip *nand)
 	/* If we are 16 bit dev, our gpmc config tells us that */
 	if ((readl(&gpmc_cfg->cs[cs].config1) & 0x3000) == 0x1000)
 		nand->options |= NAND_BUSWIDTH_16;
+
+#ifdef CONFIG_MTD_SKIP_BBTSCAN
+	/* Skip the bad block scan */
+	nand->options |= NAND_SKIP_BBTSCAN;
+#endif
 
 	nand->chip_delay = 100;
 	/* Default ECC mode */

@@ -136,7 +136,11 @@ static void nand_release_device (struct mtd_info *mtd)
 static uint8_t nand_read_byte(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
-	return readb(chip->IO_ADDR_R);
+	uint8_t byte;
+
+	byte = readb(chip->IO_ADDR_R);
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %02x\n", byte);
+	return byte;
 }
 
 /**
@@ -149,7 +153,11 @@ static uint8_t nand_read_byte(struct mtd_info *mtd)
 static uint8_t nand_read_byte16(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
-	return (uint8_t) cpu_to_le16(readw(chip->IO_ADDR_R));
+	uint8_t byte;
+
+	byte = (uint8_t) cpu_to_le16(readw(chip->IO_ADDR_R));
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %02x\n", byte);
+	return byte;
 }
 
 /**
@@ -162,7 +170,11 @@ static uint8_t nand_read_byte16(struct mtd_info *mtd)
 static u16 nand_read_word(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
-	return readw(chip->IO_ADDR_R);
+	u16 word;
+
+	word = readw(chip->IO_ADDR_R);
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %04x\n", word);
+	return word;
 }
 
 /**
@@ -201,6 +213,8 @@ static void nand_write_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND W  %d bytes\n", len);
+
 	for (i = 0; i < len; i++)
 		writeb(buf[i], chip->IO_ADDR_W);
 }
@@ -217,6 +231,8 @@ static void nand_read_buf(struct mtd_info *mtd, uint8_t *buf, int len)
 {
 	int i;
 	struct nand_chip *chip = mtd->priv;
+
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %d bytes\n", len);
 
 	for (i = 0; i < len; i++)
 		buf[i] = readb(chip->IO_ADDR_R);
@@ -236,8 +252,10 @@ static int nand_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 	struct nand_chip *chip = mtd->priv;
 
 	for (i = 0; i < len; i++)
-		if (buf[i] != readb(chip->IO_ADDR_R))
+		if (buf[i] != readb(chip->IO_ADDR_R)) {
+			MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND verify fail at offset %d\n", i);
 			return -EFAULT;
+		}
 	return 0;
 }
 
@@ -255,6 +273,8 @@ static void nand_write_buf16(struct mtd_info *mtd, const uint8_t *buf, int len)
 	struct nand_chip *chip = mtd->priv;
 	u16 *p = (u16 *) buf;
 	len >>= 1;
+
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND W  %d words\n", len);
 
 	for (i = 0; i < len; i++)
 		writew(p[i], chip->IO_ADDR_W);
@@ -275,6 +295,8 @@ static void nand_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len)
 	struct nand_chip *chip = mtd->priv;
 	u16 *p = (u16 *) buf;
 	len >>= 1;
+
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "NAND R  %d words\n", len);
 
 	for (i = 0; i < len; i++)
 		p[i] = readw(chip->IO_ADDR_R);
@@ -399,9 +421,86 @@ static int nand_default_block_markbad(struct mtd_info *mtd, loff_t ofs)
 static int nand_check_wp(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = mtd->priv;
-	/* Check the WP bit */
+
+	/* Check the WP bit. To do so requires resetting the device to
+	   force the status back to its reset value (so WP becomes whether
+	   the WP pin is set). */
+	chip->cmdfunc(mtd, NAND_CMD_RESET, -1, -1);
+
+	/* Now check the WP bit */
 	chip->cmdfunc(mtd, NAND_CMD_STATUS, -1, -1);
 	return (chip->read_byte(mtd) & NAND_STATUS_WP) ? 0 : 1;
+}
+
+/*
+ * nand_get_features: - Read the features of the NAND chip
+ * @param mtd		nand mtd instance
+ * @param faddr		nand feature address
+ * @param features	return 4-byte array of features
+ *
+ * @return		0 on success, -1 in case of errors
+ */
+int nand_get_features(struct mtd_info *mtd, uint8_t faddr, uint8_t *features)
+{
+	struct nand_chip *chip = mtd->priv;
+	int i;
+
+	chip->select_chip(mtd, 0);
+
+	/* Send the status command */
+	chip->cmd_ctrl(mtd, NAND_CMD_GET_FEATURES, NAND_CTRL_CHANGE | NAND_CTRL_CLE);
+
+	/* Send the feature address */
+	chip->cmd_ctrl(mtd, faddr, NAND_CTRL_CHANGE | NAND_CTRL_ALE);
+	/* Switch to data access */
+	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_CTRL_CHANGE | NAND_NCE);
+
+	ndelay(100);
+
+	for (i=0; i<4; ++i)
+		features[i] = chip->read_byte(mtd);
+
+	MTDDEBUG(MTD_DEBUG_LEVEL4, "%s: %02x %02x %02x %02x\n", __FUNCTION__, features[0],
+		features[1], features[2], features[3]);
+
+	return 0;
+}
+
+/**
+ * nand_set_features - [GENERIC] set features array
+ * @mtd:	MTD device structure
+ * @faddr:	feature address
+ * @params:	4-byte array of parameters to write
+ */
+int nand_set_features(struct mtd_info *mtd, uint8_t faddr, uint8_t *features)
+{
+	struct nand_chip *chip;
+
+	chip = mtd->priv;
+
+	chip->select_chip(mtd, 0);
+
+	/* Send the status command */
+	chip->cmd_ctrl(mtd, NAND_CMD_SET_FEATURES, NAND_CTRL_CHANGE | NAND_CTRL_CLE);
+	/* Send the feature address */
+	chip->cmd_ctrl(mtd, faddr, NAND_CTRL_CHANGE | NAND_CTRL_ALE);
+	/* Switch to data access */
+	chip->cmd_ctrl(mtd, NAND_CMD_NONE, NAND_CTRL_CHANGE | NAND_NCE);
+
+	ndelay(100);
+	if (chip->options & NAND_BUSWIDTH_16) {
+		uint16_t ftrs16[4];
+		int i;
+		for (i=0; i<4; ++i)
+			ftrs16[i] = features[i];
+		chip->write_buf(mtd, (uint8_t *)ftrs16, sizeof(ftrs16));
+	} else
+		chip->write_buf(mtd, features, 4);
+
+	udelay(2);
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: faddr %02x [%02x %02x %02x %02x]\n", __FUNCTION__, faddr, features[0], features[1], features[2], features[3]);
+
+	return 0;
 }
 
 /**
@@ -1168,6 +1267,26 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 			if (likely(sndcmd)) {
 				chip->cmdfunc(mtd, NAND_CMD_READ0, 0x00, page);
 				sndcmd = 0;
+			}
+
+			/* If in chipe ECC mode, need to read the status
+			   to see if an ECC error occurred. */
+			if (chip->ecc.mode == NAND_ECC_CHIP) {
+				int status;
+				chip->cmd_ctrl(mtd, NAND_CMD_STATUS,
+					NAND_CTRL_CLE | NAND_CTRL_CHANGE);
+				chip->cmd_ctrl(mtd,
+					NAND_CMD_NONE, NAND_NCE | NAND_CTRL_CHANGE);
+				status = chip->read_byte(mtd);
+				chip->cmd_ctrl(mtd, NAND_CMD_READ0,
+					NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+				chip->cmd_ctrl(mtd, NAND_CMD_NONE,
+					NAND_NCE | NAND_CTRL_CHANGE);
+
+				if (status & 0x1)
+					mtd->ecc_stats.failed++;
+				else if (status & 0x10)
+					mtd->ecc_stats.corrected++;
 			}
 
 			/* Now read the page into the buffer */
@@ -1996,7 +2115,7 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 	/* Do not allow write past end of page */
 	if ((ops->ooboffs + ops->ooblen) > len) {
 		MTDDEBUG (MTD_DEBUG_LEVEL0, "nand_write_oob: "
-			  "Attempt to write past end of page\n");
+			"Attempt to write past end of page(%d+%d>%d)\n", ops->ooboffs, ops->ooblen, len);
 		return -EINVAL;
 	}
 
@@ -2585,6 +2704,9 @@ static const struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		return ERR_PTR(-ENODEV);
 	}
 
+	chip->maf_id = tmp_manf;
+	chip->dev_id = tmp_id;
+
 	if (!type)
 		type = nand_flash_ids;
 
@@ -2862,6 +2984,30 @@ int nand_scan_tail(struct mtd_info *mtd)
 		chip->ecc.write_oob = nand_write_oob_std;
 		chip->ecc.size = 256;
 		chip->ecc.bytes = 3;
+		if (chip->has_chip_ecc) {
+			/* Put chip into no-ECC mode */
+			uint8_t params[4] = {0x00, 0x00, 0x00, 0x00};
+			nand_set_features(mtd, 0x90, params);
+		}
+		break;
+
+	case NAND_ECC_CHIP:
+		if (!chip->ecc.read_page_raw)
+			chip->ecc.read_page_raw = nand_read_page_raw;
+		if (!chip->ecc.write_page_raw)
+			chip->ecc.write_page_raw = nand_write_page_raw;
+		chip->ecc.read_page = nand_read_page_raw;
+		chip->ecc.write_page = nand_write_page_raw;
+		chip->ecc.read_oob = nand_read_oob_std;
+		chip->ecc.write_oob = nand_write_oob_std;
+		chip->ecc.size = mtd->writesize;
+		chip->ecc.bytes = 0;
+
+		if (chip->has_chip_ecc) {
+			/* Put chip into ECC mode */
+			uint8_t params[4] = {0x08, 0x00, 0x00, 0x00};
+			nand_set_features(mtd, 0x90, params);
+		}
 		break;
 
 	case NAND_ECC_NONE:
@@ -2875,6 +3021,11 @@ int nand_scan_tail(struct mtd_info *mtd)
 		chip->ecc.write_oob = nand_write_oob_std;
 		chip->ecc.size = mtd->writesize;
 		chip->ecc.bytes = 0;
+		if (chip->has_chip_ecc) {
+			/* Put chip into ECC mode */
+			uint8_t params[4] = {0x08, 0x00, 0x00, 0x00};
+			nand_set_features(mtd, 0x90, params);
+		}
 		break;
 
 	default:
@@ -2893,6 +3044,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 		chip->ecc.layout->oobavail +=
 			chip->ecc.layout->oobfree[i].length;
 	mtd->oobavail = chip->ecc.layout->oobavail;
+	MTDDEBUG(MTD_DEBUG_LEVEL3, "%s: oobavail %d\n", __FUNCTION__, mtd->oobavail);
 
 	/*
 	 * Set the number of read / write steps for one page depending on ECC

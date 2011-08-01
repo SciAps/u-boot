@@ -215,3 +215,44 @@ void mem_init(void)
 	/* only init up first bank here */
 	do_sdrc_init(CS0, EARLY_INIT);
 }
+
+#ifdef CONFIG_CMD_SDRC_CONFIG
+static void dump_sdrc_config(int cs)
+{
+	struct sdrc_actim *sdrc_actim_base;
+
+	if(cs)
+		sdrc_actim_base = (struct sdrc_actim *)SDRC_ACTIM_CTRL1_BASE;
+	else
+		sdrc_actim_base = (struct sdrc_actim *)SDRC_ACTIM_CTRL0_BASE;
+
+	printf("cs%d: mcfg  %08x mr    %08x rfr_ctrl %08x emr2 %08x\n",
+		cs, readl(&sdrc_base->cs[cs].mcfg),
+		readl(&sdrc_base->cs[cs].mr),
+		readl(&sdrc_base->cs[cs].rfr_ctrl),
+		readl(&sdrc_base->cs[cs].emr2));
+	printf("cs%d: ctrla %08x ctrlb %08x\n",
+		cs, 
+		readl(&sdrc_actim_base->ctrla),
+		readl(&sdrc_actim_base->ctrlb));
+}
+
+int do_dump_sdrc_config(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	printf("sysconfig %08x sharing %08x dlla_ctrl %08x",
+		readl(&sdrc_base->sysconfig),
+		readl(&sdrc_base->sharing),
+		readl(&sdrc_base->dlla_ctrl));
+	printf(" cs_cfg %08x\n",
+		readl(&sdrc_base->cs_cfg));
+		
+	dump_sdrc_config(0);
+	dump_sdrc_config(1);
+	return 0;
+}
+
+U_BOOT_CMD(sdrc_config, 1, 1, do_dump_sdrc_config,
+	"sdrc_config - dump SDRC registers",
+	""
+);
+#endif

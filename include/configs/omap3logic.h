@@ -155,8 +155,11 @@
 #define CONFIG_CMD_I2C		/* I2C serial bus support	*/
 #define CONFIG_CMD_MMC		/* MMC support			*/
 #define CONFIG_CMD_NAND		/* NAND support			*/
+#define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands	*/
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
+
+#define BOARD_LATE_INIT
 
 #undef CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
 #undef CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
@@ -164,6 +167,8 @@
 #undef CONFIG_CMD_IMLS		/* List all found images	*/
 
 #define CONFIG_CMD_GPMC_CONFIG	/* gpmc_config */
+#define CONFIG_CMD_MUX_CONFIG	/* mux_config */
+#define CONFIG_CMD_SDRC_CONFIG	/* sdrc_config */
 
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_HARD_I2C			1
@@ -172,6 +177,11 @@
 #define CONFIG_SYS_I2C_BUS		0
 #define CONFIG_SYS_I2C_BUS_SELECT	1
 #define CONFIG_DRIVER_OMAP34XX_I2C	1
+
+#define CONFIG_MTD_DEBUG		1
+#define CONFIG_MTD_DEBUG_VERBOSE	-1
+#define CONFIG_MTD_SKIP_BBTSCAN		1	/* Skip NAND bad block scan */
+#define CONFIG_TOOL_SIGNGP		1
 
 /*
  * TWL4030
@@ -201,39 +211,149 @@
 
 #define CONFIG_BOOTFILE		uImage
 
+#define CONFIG_PREBOOT \
+	"echo ======================NOTICE============================;"\
+	"echo The u-boot environment is not set. - You are;"            \
+	"echo required to set a valid display for your LCD panel.;"	\
+	"echo Valid display options are:;"				\
+	"echo \"  2 == LQ121S1DG31     TFT SVGA    (12.1)  Sharp\";"	\
+	"echo \"  3 == LQ036Q1DA01     TFT QVGA    (3.6)   Sharp w/ASIC\";" \
+	"echo \"  5 == LQ064D343       TFT VGA     (6.4)   Sharp\";"	\
+	"echo \"  7 == LQ10D368        TFT VGA     (10.4)  Sharp\";"	\
+	"echo \" 15 == LQ043T1DG01     TFT WQVGA   (4.3)   Sharp (DEFAULT)\";" \
+	"echo \" vga[-16 OR -24]       LCD VGA     640x480\";"          \
+	"echo \" svga[-16 OR -24]      LCD SVGA    800x600\";"          \
+	"echo \" xga[-16 OR -24]       LCD XGA     1024x768\";"         \
+	"echo \" 720p[-16 OR -24]      LCD 720P    1280x720\";"         \
+	"echo \" sxga[-16 OR -24]      LCD SXGA    1280x1024\";"        \
+	"echo \" uxga[-16 OR -24]      LCD UXGA    1600x1200\";"        \
+	"echo MAKE SURE YOUR DISPLAY VARIABLE IS CORRECTLY ENTERED!;"	\
+	"setenv display 15;"						\
+	"setenv preboot;"						\
+	"saveenv;"
+
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"loadaddr=0x82000000\0" \
+	"autoboot=if mmc init; then " \
+			"if run loadbootscript; then " \
+				"run bootscript; " \
+			"else " \
+				"run defaultboot;" \
+			"fi; " \
+		"else run defaultboot; fi\0" \
+	"defaultboot=run mmcramboot\0" \
+	"disablecharging no\0" \
+	"loadaddr=0x81000000\0" \
+	"serverip=192.168.3.5\0" \
 	"usbtty=cdc_acm\0" \
-	"console=ttyS2,115200n8\0" \
-	"mmcargs=setenv bootargs console=${console} " \
+	"consoledevice=ttyS0\0" \
+	"display=15\0" \
+	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
+	"dump_bootargs=echo 'Bootargs: '; echo $bootargs\0" \
+	"rotation=0\0" \
+	"rootdevice=/dev/mtdblock4\0" \
+	"vrfb_arg=if itest ${rotation} -ne 0; then " \
+			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
+		"fi\0" \
+	"otherbootargs=ignore_loglevel early_printk no_console_suspend\0" \
+	"common_bootargs=setenv bootargs ${bootargs} display=${display} " \
+		"${otherbootargs};" \
+		"run vrfb_arg\0" \
+	"mmcargs=run setconsole; setenv bootargs console=${console} " \
 		"root=/dev/mmcblk0p2 rw " \
 		"rootfstype=ext3 rootwait\0" \
-	"nandargs=setenv bootargs console=${console} " \
-		"root=/dev/mtdblock4 rw " \
-		"rootfstype=jffs2\0" \
+	"rootfstype=yaffs2\0" \
+	"nandargs=run setconsole; setenv bootargs console=${console} " \
+		"root=${rootdevice} rw " \
+		"rootfstype=${rootfstype}\0" \
 	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
-	"bootscript=echo Running bootscript from mmc ...; " \
+	"bootscript=echo 'Running bootscript from mmc ...'; " \
 		"source ${loadaddr}\0" \
-	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0" \
-	"mmcboot=echo Booting from mmc ...; " \
+	"loaduimage=fatload mmc 0 ${loadaddr} ${bootfile}\0" \
+	"mmcboot=echo 'Booting from mmc ...'; " \
 		"run mmcargs; " \
 		"bootm ${loadaddr}\0" \
-	"nandboot=echo Booting from nand ...; " \
+	"nandkerneloffset=0x280000\0" \
+	"nandkernelsize=0x300000\0" \
+	"nandboot=echo 'Booting from nand ...'; " \
 		"run nandargs; " \
-		"onenand read ${loadaddr} 280000 400000; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"nand read.i ${loadaddr} ${nandkerneloffset} ${nandkernelsize}; " \
 		"bootm ${loadaddr}\0" \
+	"mtdboot=echo \"Booting kernel from ram w/${rootfstype} rootfs...\"; " \
+		"run nandargs; " \
+		"run common_bootargs; " \
+		"bootm ${loadaddr}\0" \
+	"tftpmtdboot=echo \"Booting kernel from tftp w/${rootfstype} rootfs...\"; " \
+		"run nandargs; " \
+		"run common_bootargs; " \
+		"tftpboot $loadaddr ${bootfile}; " \
+		"bootm ${loadaddr}\0" \
+	"rootpath=/opt/nfs-exports/ltib-omap\0" \
+	"nfsoptions=,wsize=1500,rsize=1500\0"				\
+	"nfsargs=run setconsole; setenv bootargs console=${console} " \
+		"root=/dev/nfs rw " \
+		"nfsroot=${serverip}:${rootpath}${nfsoptions} ip=dhcp\0" \
+	"nfsboot=echo 'Booting from network using NFS rootfs...'; " \
+		"run nfsargs; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"tftpboot $loadaddr ${bootfile}; "\
+		"bootm ${loadaddr}\0" \
+	"ramdisksize=64000\0" \
+	"ramdiskaddr=0x82000000\0" \
+	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
+	"ramargs=run setconsole; setenv bootargs console=${console} " \
+		"root=/dev/ram rw ramdisk_size=${ramdisksize}\0" \
+	"mmcramboot=echo 'Booting from mmc w/ramdisk...'; " \
+		"run ramargs; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"mmc init; " \
+		"fatload mmc 0 ${loadaddr} ${bootfile}; "\
+		"fatload mmc 0 ${ramdiskaddr} ${ramdiskimage}; "\
+		"bootm ${loadaddr} ${ramdiskaddr}\0" \
+	"ramboot=echo 'Booting kernel/ramdisk rootfs from tftp...'; " \
+		"run ramargs; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"tftpboot ${loadaddr} ${bootfile}; "\
+		"tftpboot ${ramdiskaddr} ${ramdiskimage}; "\
+		"bootm ${loadaddr} ${ramdiskaddr}\0" \
+	"xipboot=echo 'Booting kernel/ramdisk rootfs from ram(assumed loaded from .elf file)...'; " \
+		"run ramargs; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"bootm ${loadaddr} ${ramdiskaddr}\0"
+
+/* Boot commands for TI PSP image on EVM boards */
+#define PSPBOOT_ENV \
+	"psp_loadaddr=0x80000000\0" \
+	"psp_initrdaddr=0x81600000\0" \
+	"psp_ramargs=run setconsole; setenv bootargs root=/dev/ram0 rw mem=128M console=${console} initrd=${psp_initrdaddr},16M ramdisk_size=16384 ${other_psp_rambootargs}\0" \
+	"psp_ramboot=run psp_ramargs; tftpboot ${psp_loadaddr} ${bootfile}; tftpboot ${psp_initrdaddr} ramdisk.gz; bootm ${psp_loadaddr}\0"
+
+/* Boot commands for Logic Demo BSP image */
+#define DEMOBOOT_ENV \
+	"demo_loadaddr=0x80000000\0" \
+	"demo_initrdaddr=0x81600000\0" \
+	"demo_initrdsize=32M\0" \
+	"demo_ramdisk_size=32768\0" \
+	"demo_kernelimage=demo-uImage\0" \
+	"demo_ramdiskimage=demo-ramdisk.gz\0" \
+	"kernel_memsize=mem=128M\0" \
+	"demo_ramargs=run setconsole; setenv bootargs root=/dev/ram0 rw ${kernel_memsize} console=${console} initrd=${demo_initrdaddr},${demo_initrdsize} ramdisk_size=${demo_ramdisk_size} ${other_demo_ramargs}\0" \
+	"demo_boot=echo 'Booting demo kernel/ramdisk rootfs from mmc...'; " \
+		"mmc init; " \
+		"run demo_ramargs; " \
+		"run dump_bootargs; "\
+		"fatload mmc 0 ${demo_loadaddr} ${demo_kernelimage}; " \
+		"fatload mmc 0 ${demo_initrdaddr} ${demo_ramdiskimage}; " \
+		"bootm ${demo_loadaddr}\0"
 
 #define CONFIG_BOOTCOMMAND \
-	"if mmc init; then " \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loaduimage; then " \
-				"run mmcboot; " \
-			"else run nandboot; " \
-			"fi; " \
-		"fi; " \
-	"else run nandboot; fi"
+	"run autoboot"
 
 #define CONFIG_AUTO_COMPLETE	1
 /*
@@ -247,7 +367,7 @@
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
 					sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command */
+#define CONFIG_SYS_MAXARGS		64	/* max number of command */
 						/* args */
 /* Boot Argument Buffer Size */
 #define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)

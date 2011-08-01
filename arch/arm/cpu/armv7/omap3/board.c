@@ -37,6 +37,7 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mem.h>
 #include <asm/cache.h>
+#include <nand.h>
 
 extern omap3_sysinfo sysinfo;
 
@@ -249,12 +250,40 @@ void abort(void)
  *****************************************************************************/
 static int do_switch_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
+	struct mtd_info *mtd;
+	struct nand_chip *nand;
+
+	/* the following commands operat on the current device */
+	if (nand_curr_device > 0 || nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
+		!nand_info[nand_curr_device].name) {
+		printf("\nno NAND devices available\n");
+		return 1;
+	}
+	mtd = &nand_info[nand_curr_device];
+	nand = mtd->priv;
+
+	if (argc == 1) {
+		switch (nand->ecc.mode) {
+		case NAND_ECC_SOFT:
+			printf("Software ECC\n");
+			break;
+		case NAND_ECC_HW:
+			printf("Hardware ECC\n");
+			break;
+		case NAND_ECC_CHIP:
+			printf("Internal to NAND Hardware ECC\n");
+			break;
+		}
+		return 0;
+	}
 	if (argc != 2)
 		goto usage;
-	if (strncmp(argv[1], "hw", 2) == 0)
-		omap_nand_switch_ecc(1);
-	else if (strncmp(argv[1], "sw", 2) == 0)
-		omap_nand_switch_ecc(0);
+	if (strcmp(argv[1], "hw") == 0)
+		omap_nand_switch_ecc(OMAP_ECC_HW);
+	else if (strcmp(argv[1], "sw") == 0)
+		omap_nand_switch_ecc(OMAP_ECC_SOFT);
+	else if (strcmp(argv[1], "chip") == 0)
+		omap_nand_switch_ecc(OMAP_ECC_CHIP);
 	else
 		goto usage;
 
@@ -268,7 +297,7 @@ usage:
 U_BOOT_CMD(
 	nandecc, 2, 1,	do_switch_ecc,
 	"switch OMAP3 NAND ECC calculation algorithm",
-	"[hw/sw] - Switch between NAND hardware (hw) or software (sw) ecc algorithm"
+	"[hw/sw/chip] - Switch between NAND hardware (hw), software (sw),\n or in-chip (chip) ecc algorithm"
 );
 
 #endif /* CONFIG_NAND_OMAP_GPMC */

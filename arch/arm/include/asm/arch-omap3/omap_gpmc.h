@@ -58,6 +58,25 @@
 }
 #endif
 
+/* Micron MT29F4G16ABBDA internal-to-NAND ECC layout */
+#define GPMC_NAND_CHIP_ECC_LAYOUT {\
+	.eccbytes = 32,\
+	.eccpos = {8, 9, 10, 11, 12, 13, 14, 15, \
+		   24, 25, 26, 27, 28, 19, 30, 31,	\
+		   40, 41, 42, 43, 44, 45, 46, 47, \
+		   56, 57, 58, 59, 60, 61, 62, 63}, \
+	.oobfree = {\
+		{.offset = 4,\
+		 .length = 4 },\
+		{.offset = 20,\
+		 .length = 4 },\
+		{.offset = 36,\
+		 .length = 4 },\
+		{.offset = 52,\
+		 .length = 4 },\
+	} \
+};
+
 /* Small Page x8 NAND device Layout */
 #ifdef GPMC_NAND_ECC_SP_x8_LAYOUT
 #define GPMC_NAND_HW_ECC_LAYOUT {\
