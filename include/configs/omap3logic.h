@@ -151,10 +151,19 @@
 #define CONFIG_CMD_EXT2		/* EXT2 Support			*/
 #define CONFIG_CMD_FAT		/* FAT support			*/
 #define CONFIG_CMD_JFFS2	/* JFFS2 Support		*/
+#define CONFIG_CMD_NAND_YAFFS	/* YAFFS NAND Support		*/
+#define CONFIG_YAFFS2		/* YAFFS2 Support		*/
 
 #define CONFIG_CMD_I2C		/* I2C serial bus support	*/
 #define CONFIG_CMD_MMC		/* MMC support			*/
 #define CONFIG_CMD_NAND		/* NAND support			*/
+#define CONFIG_MTD_DEVICE	/* needed for MTD mtdparts support	*/
+#define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
+#define MTDIDS_DEFAULT			"nand0=nand"
+#define MTDPARTS_DEFAULT		"mtdparts=nand:512k(x-loader),"\
+					"768k(u-boot),128k(u-boot-env),"\
+					"4m(kernel),-(fs)"
+
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands	*/
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING
@@ -236,6 +245,8 @@
 
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
+	"mtdids=" MTDIDS_DEFAULT "\0"	\
+	"mtdparts=" MTDPARTS_DEFAULT "\0"	\
 	"autoboot=if mmc init; then " \
 			"if run loadbootscript; then " \
 				"run bootscript; " \
@@ -258,8 +269,10 @@
 			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
 		"fi\0" \
 	"otherbootargs=ignore_loglevel early_printk no_console_suspend\0" \
+	"addmtdparts=setenv bootargs ${bootargs} ${mtdparts}\0" \
 	"common_bootargs=setenv bootargs ${bootargs} display=${display} " \
 		"${otherbootargs};" \
+		"run addmtdparts; " \
 		"run vrfb_arg\0" \
 	"mmcargs=run setconsole; setenv bootargs console=${console} " \
 		"root=/dev/mmcblk0p2 rw " \

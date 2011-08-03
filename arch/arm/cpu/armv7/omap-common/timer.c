@@ -44,7 +44,8 @@ static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
  */
 
 #define TIMER_CLOCK	(V_SCLK / (2 << CONFIG_SYS_PTV))
-#define TIMER_LOAD_VAL	0xffffffff
+#define TIMER_OVERFLOW_VAL	0xffffffff
+#define TIMER_LOAD_VAL		0
 
 int timer_init(void)
 {
@@ -86,7 +87,7 @@ void __udelay(unsigned long usec)
 	while (tmo > 0) {
 		now = readl(&timer_base->tcrr);
 		if (last > now) /* count up timer overflow */
-			tmo -= TIMER_LOAD_VAL - last + now;
+			tmo -= TIMER_OVERFLOW_VAL - last + now;
 		else
 			tmo -= now - last;
 		last = now;
