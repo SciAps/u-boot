@@ -188,6 +188,7 @@ typedef struct {
 	unsigned int mode;
 	unsigned int size;
 	unsigned int RCA;
+	unsigned int max_freq;	/* max frequency of MMC device (if !0) */
 } mmc_card_data;
 #define RSP_TYPE_NONE	(RSP_TYPE_NORSP   | CCCE_NOCHECK | CICE_NOCHECK)
 #define MMC_CMD0	(INDEX(0)  | RSP_TYPE_NONE | DP_NO_DATA | DDIR_WRITE)

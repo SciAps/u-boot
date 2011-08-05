@@ -33,6 +33,7 @@
 
 #include "omap3_mmc.h"
 
+#if 0
 static const unsigned short mmc_transspeed_val[15][4] = {
 	{CLKD(10, 1), CLKD(10, 10), CLKD(10, 100), CLKD(10, 1000)},
 	{CLKD(12, 1), CLKD(12, 10), CLKD(12, 100), CLKD(12, 1000)},
@@ -50,6 +51,7 @@ static const unsigned short mmc_transspeed_val[15][4] = {
 	{CLKD(70, 1), CLKD(70, 10), CLKD(70, 100), CLKD(70, 1000)},
 	{CLKD(80, 1), CLKD(80, 10), CLKD(80, 100), CLKD(80, 1000)}
 };
+#endif
 
 static mmc_card_data cur_card_data;
 static block_dev_desc_t mmc_blk_dev;
@@ -479,7 +481,11 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 {
 	unsigned char ret_val;
 	unsigned int argument;
+#if 1
+	unsigned int trans_clk, retries = 2;
+#else
 	unsigned int trans_clk, trans_fact, trans_unit, retries = 2;
+#endif
 	unsigned char trans_speed;
 	mmc_resp_t mmc_resp;
 
@@ -507,6 +513,20 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 	if (ret_val != 1)
 		return ret_val;
 
+	if (mmc_card_cur->max_freq && trans_speed > mmc_card_cur->max_freq) {
+		trans_speed = mmc_card_cur->max_freq;
+	}
+
+#if 1
+	/* We know the MMC reference clock, just do the division and be done
+	   with it! */
+	trans_clk = MMC_CLOCK_REFERENCE / trans_speed;
+	if (trans_speed * trans_clk < MMC_CLOCK_REFERENCE)
+		trans_clk++;
+
+	if (trans_clk > 1023)
+		trans_clk = 1023;
+#else
 	trans_unit = trans_speed & MMC_CSD_TRAN_SPEED_UNIT_MASK;
 	trans_fact = trans_speed & MMC_CSD_TRAN_SPEED_FACTOR_MASK;
 
@@ -521,6 +541,7 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 	trans_fact >>= 3;
 
 	trans_clk = mmc_transspeed_val[trans_fact - 1][trans_unit] * 2;
+#endif
 	ret_val = mmc_clock_config(CLK_MISC, trans_clk);
 
 	if (ret_val != 1)
@@ -547,8 +568,22 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 
 int mmc_legacy_init(int dev)
 {
+	char *p, *q, buf[32];
+
 	if (mmc_set_dev(dev) != 0)
 		return 1;
+
+	sprintf(buf, "mmc%d_max_freq_mhz", dev);
+	p = getenv(buf);
+	if (p) {
+		cur_card_data.max_freq = (unsigned int)simple_strtoull(p, &q, 0);
+		if (q && *q)
+			cur_card_data.max_freq = 0;
+	} else
+		cur_card_data.max_freq = 0;
+
+	if (cur_card_data.max_freq)
+		printf("MMC%d: max frequency limited to %uMHz\n", dev, cur_card_data.max_freq);
 
 	if (configure_mmc(&cur_card_data) != 1)
 		return 1;
