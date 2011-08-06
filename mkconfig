@@ -182,7 +182,7 @@ if [ "$BOARD" != "" ]; then
     config_mk=$config_mk/$BOARD
 fi
 
-if [ -d $config_mk ]; then
+if [ -d $config_mk -a -f $config_mk/config.mk ]; then
     TEXT_BASE=`grep CONFIG_SYS_TEXT_BASE $config_mk/config.mk`
 fi
 if [ ! -z "$TEXT_BASE" ]; then
