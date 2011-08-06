@@ -88,7 +88,7 @@ endif
 
 ifdef O
 ifeq ("$(origin O)", "command line")
-BUILD_DIR := $(O)
+export BUILD_DIR := $(O)
 endif
 endif
 
@@ -99,7 +99,7 @@ saved-output := $(BUILD_DIR)
 $(shell [ -d ${BUILD_DIR} ] || mkdir -p ${BUILD_DIR})
 
 # Verify if it was successful.
-BUILD_DIR := $(shell cd $(BUILD_DIR) && /bin/pwd)
+export BUILD_DIR := $(shell cd $(BUILD_DIR) && /bin/pwd)
 $(if $(BUILD_DIR),,$(error output directory "$(saved-output)" does not exist))
 endif # ifneq ($(BUILD_DIR),)
 
@@ -565,9 +565,7 @@ include/license.h: tools/bin2header COPYING
 #########################################################################
 
 unconfig:
-	@rm -f $(obj)include/config.h $(obj)include/config.mk \
-		$(obj)board/*/config.tmp $(obj)board/*/*/config.tmp \
-		$(obj)include/autoconf.mk $(obj)include/autoconf.mk.dep
+	@rm -f $(obj)board/*/config.tmp $(obj)board/*/*/config.tmp
 
 %_config::	unconfig
 	@$(MKCONFIG) -A $(@:_config=)

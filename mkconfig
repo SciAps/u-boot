@@ -8,6 +8,8 @@
 # (C) 2002-2010 DENX Software Engineering, Wolfgang Denk <wd@denx.de>
 #
 
+#set -x
+
 APPEND=no	# Default: Create new config file
 BOARD_NAME=""	# Name to print in make output
 TARGETS=""
@@ -139,6 +141,14 @@ fi
 #
 # Create board specific header file
 #
+
+if [ -f config.h ]; then
+    mv config.h config.h.bak
+    cp config.h.bak config.h
+else
+    touch config.h.bak
+fi
+
 if [ "$APPEND" = "yes" ]	# Append to existing config file
 then
 	echo >> config.h
@@ -159,5 +169,32 @@ cat << EOF >> config.h
 #include <configs/${CONFIG_NAME}.h>
 #include <asm/config.h>
 EOF
+
+#
+# Add TEXT_BASE from board config.mk in comment to config.h; this
+# causes config.h to change if the TEXT_BASE in board config.mk changes
+#
+config_mk=$SRCTREE/board
+if [ "$VENDOR" != "" ]; then
+    config_mk=$config_mk/$VENDOR
+fi
+if [ "$BOARD" != "" ]; then
+    config_mk=$config_mk/$BOARD
+fi
+
+if [ -d $config_mk ]; then
+    TEXT_BASE=`grep CONFIG_SYS_TEXT_BASE $config_mk/config.mk`
+fi
+if [ ! -z "$TEXT_BASE" ]; then
+    echo "/* $TEXT_BASE */" >> config.h
+else
+    rm config.h.bak
+fi
+
+cmp -s config.h config.h.bak && {
+    echo "same config.h file..."
+    rm config.h
+    mv config.h.bak config.h
+}
 
 exit 0
