@@ -2090,3 +2090,45 @@ U_BOOT_CMD(
 	"<ro-flag>  := when set to 'ro' makes partition read-only (not used, passed to kernel)"
 );
 /***************************************************/
+
+int mtd_get_part_priv(const char *partname, int *idx, struct mtd_device **dev, loff_t *off, loff_t *size, void **cookie, void **priv)
+{
+	int ret;
+	u8 pnum;
+	struct mtd_device *mtd_dev;
+	struct part_info *part;
+
+	ret = mtdparts_init();
+	if (ret)
+		return ret;
+
+	ret = find_dev_and_part(partname, &mtd_dev, &pnum, &part);
+	if (ret)
+		return ret;
+
+	if (mtd_dev->id->type != MTD_DEV_TYPE_NAND) {
+		puts("not a NAND device\n");
+		return -1;
+	}
+
+	*off = part->offset;
+	*dev = mtd_dev;
+	*size = part->size;
+	*idx = mtd_dev->id->num;
+
+	*cookie = part;
+	*priv = part->jffs2_priv;
+
+	ret = nand_set_dev(*idx);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+void mtd_set_part_priv(void *cookie, void *priv)
+{
+	struct part_info *part = cookie;
+
+	part->jffs2_priv = priv;
+}

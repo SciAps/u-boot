@@ -12,8 +12,9 @@
 extern void cmd_yaffs_mount(char *mp);
 extern void cmd_yaffs_umount(char *mp);
 extern void cmd_yaffs_ls(const char *mountpt, int longlist);
+extern int cmd_yaffs_df(const char *path, loff_t *size);
 extern void cmd_yaffs_mwrite_file(char *fn, char *addr, int size);
-extern void cmd_yaffs_mread_file(char *fn, char *addr);
+extern void cmd_yaffs_mread_file(char *fn, char *addr, long *size);
 extern void cmd_yaffs_mkdir(const char *dir);
 extern void cmd_yaffs_rmdir(const char *dir);
 extern void cmd_yaffs_rm(const char *path);
@@ -47,14 +48,30 @@ int do_yls (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
     return(0);
 }
 
+int do_ydf (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+    loff_t space;
+    int ret;
+
+    ret = cmd_yaffs_df(argv[1], &space);
+    if (!ret)
+	    printf("Free Space: %lluKiB\n", space / 1024);
+
+    return !!ret;
+}
+
 
 int do_yrdm (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+    long size;
+    char buf[12];
     char *filename = argv[1];
     ulong addr = simple_strtoul(argv[2], NULL, 16);
 
-    cmd_yaffs_mread_file(filename, (char *)addr);
+    cmd_yaffs_mread_file(filename, (char *)addr, &size);
 
+    sprintf(buf, "%lX", size);
+    setenv("filesize", buf);
     return(0);
 }
 
@@ -116,32 +133,38 @@ int do_ydump (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(
     ymount, 3,  0,  do_ymount,
-    "mount yaffs",
+    "YAFFS mount",
     ""
 );
 
 U_BOOT_CMD(
     yumount, 3,  0,  do_yumount,
-    "unmount yaffs",
+    "YAFFS unmount",
     ""
 );
 
 U_BOOT_CMD(
     yls,    4,  0,  do_yls,
-    "yaffs ls",
+    "YAFFS ls",
+    "[-l] name"
+);
+
+U_BOOT_CMD(
+    ydf,    2,  0,  do_yls,
+    "YAFFS disk free",
     "[-l] name"
 );
 
 U_BOOT_CMD(
     yrdm,   3,  0,  do_yrdm,
-    "read file to memory from yaffs",
-    "filename offset"
+    "YAFFS read file to memory",
+    "filename addr"
 );
 
 U_BOOT_CMD(
     ywrm,   4,  0,  do_ywrm,
-    "write file from memory to yaffs",
-    "filename offset size"
+    "YAFFS write file from memory",
+    "filename addr size"
 );
 
 U_BOOT_CMD(

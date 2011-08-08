@@ -249,7 +249,7 @@ void cmd_yaffs_umount(char *mp)
 		printf("Error umounting %s, return value: %d\n", mp, yaffsfs_GetError());
 }
 
-void cmd_yaffs_mread_file(char *fn, char *addr)
+void cmd_yaffs_mread_file(char *fn, char *addr, long *size)
 {
 	int h;
 	struct yaffs_stat s;
@@ -268,6 +268,7 @@ void cmd_yaffs_mread_file(char *fn, char *addr)
 
 	yaffs_read(h,addr,(int)s.st_size);
 	printf("\t[DONE]\n");
+	*size = s.st_size;
 
 	yaffs_close(h);
 }
@@ -323,6 +324,19 @@ void cmd_yaffs_ls(const char *mountpt, int longlist)
 	}
 }
 
+int cmd_yaffs_df(const char *path, loff_t *space)
+{
+	loff_t free_space;
+	int ret = 0;
+
+	free_space = yaffs_freespace(path);
+	if (free_space == -1) {
+		ret = yaffsfs_GetError();
+	} else
+		*space = free_space;
+
+	return ret;
+}
 
 void cmd_yaffs_mkdir(const char *dir)
 {
