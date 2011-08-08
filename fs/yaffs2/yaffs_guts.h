@@ -584,7 +584,7 @@ struct yaffs_DeviceStruct {
 					  yaffs_ExtendedTags * tags);
 	int (*markNANDBlockBad) (struct yaffs_DeviceStruct * dev, int blockNo);
 	int (*queryNANDBlock) (struct yaffs_DeviceStruct * dev, int blockNo,
-			       yaffs_BlockState * state, int *sequenceNumber);
+			       yaffs_BlockState * state, __u32 *sequenceNumber);
 #endif
 
 	int isYaffs2;
@@ -801,6 +801,9 @@ typedef struct {
     __u32 head;
 } yaffs_CheckpointValidity;
 
+#ifdef NO_Y_INLINE
+extern yaffs_BlockInfo *yaffs_GetBlockInfo(yaffs_Device * dev, int blk);
+#else
 /* Function to manipulate block info */
 static Y_INLINE yaffs_BlockInfo *yaffs_GetBlockInfo(yaffs_Device * dev, int blk)
 {
@@ -813,6 +816,7 @@ static Y_INLINE yaffs_BlockInfo *yaffs_GetBlockInfo(yaffs_Device * dev, int blk)
 	}
 	return &dev->blockInfo[blk - dev->internalStartBlock];
 }
+#endif
 
 /*----------------------- YAFFS Functions -----------------------*/
 

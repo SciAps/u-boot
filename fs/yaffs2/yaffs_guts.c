@@ -78,11 +78,15 @@ static int yaffs_UpdateObjectHeader(yaffs_Object * in, const YCHAR * name,
 				    int force, int isShrink, int shadows);
 static void yaffs_RemoveObjectFromDirectory(yaffs_Object * obj);
 static int yaffs_CheckStructures(void);
+#ifdef YAFFS_USE_DELETEWORKER
 static int yaffs_DeleteWorker(yaffs_Object * in, yaffs_Tnode * tn, __u32 level,
 			      int chunkOffset, int *limit);
+#endif
 static int yaffs_DoGenericObjectDeletion(yaffs_Object * in);
 
+#if 0
 static yaffs_BlockInfo *yaffs_GetBlockInfo(yaffs_Device * dev, int blockNo);
+#endif
 
 static __u8 *yaffs_GetTempBuffer(yaffs_Device * dev, int lineNo);
 static void yaffs_ReleaseTempBuffer(yaffs_Device * dev, __u8 * buffer,
@@ -396,10 +400,12 @@ static int yaffs_SkipVerification(yaffs_Device *dev)
 	return !(yaffs_traceMask & (YAFFS_TRACE_VERIFY | YAFFS_TRACE_VERIFY_FULL));
 }
 
+#ifdef YAFFS_USE_SKIPFULLVERIFICATION
 static int yaffs_SkipFullVerification(yaffs_Device *dev)
 {
 	return !(yaffs_traceMask & (YAFFS_TRACE_VERIFY_FULL));
 }
+#endif
 
 static int yaffs_SkipNANDVerification(yaffs_Device *dev)
 {
@@ -596,7 +602,7 @@ static void yaffs_VerifyObjectHeader(yaffs_Object *obj, yaffs_ObjectHeader *oh, 
 }
 
 
-
+#ifdef YAFFS_USE_VERIFYTNODEWORKER
 static int yaffs_VerifyTnodeWorker(yaffs_Object * obj, yaffs_Tnode * tn,
 					__u32 level, int chunkOffset)
 {
@@ -642,7 +648,7 @@ static int yaffs_VerifyTnodeWorker(yaffs_Object * obj, yaffs_Tnode * tn,
 	return ok;
 
 }
-
+#endif
 
 static void yaffs_VerifyFile(yaffs_Object *obj)
 {
@@ -1546,7 +1552,7 @@ static int yaffs_FindChunkInGroup(yaffs_Device * dev, int theChunk,
 	return -1;
 }
 
-
+#ifdef YAFFS_USE_DELETEWORKER
 /* DeleteWorker scans backwards through the tnode tree and deletes all the
  * chunks and tnodes in the file
  * Returns 1 if the tree was deleted.
@@ -1643,6 +1649,7 @@ static int yaffs_DeleteWorker(yaffs_Object * in, yaffs_Tnode * tn, __u32 level,
 	return 1;
 
 }
+#endif
 
 static void yaffs_SoftDeleteChunk(yaffs_Device * dev, int chunk)
 {
@@ -2140,7 +2147,7 @@ yaffs_Object *yaffs_CreateNewObject(yaffs_Device * dev, int number,
 {
 
 	yaffs_Object *theObject;
-	yaffs_Tnode *tn;
+	yaffs_Tnode *tn = NULL;
 
 	if (number < 0) {
 		number = yaffs_CreateNewObjectNumber(dev);
@@ -2255,7 +2262,7 @@ static yaffs_Object *yaffs_MknodObject(yaffs_ObjectType type,
 				       const YCHAR * aliasString, __u32 rdev)
 {
 	yaffs_Object *in;
-	YCHAR *str;
+	YCHAR *str = NULL;
 
 	yaffs_Device *dev = parent->myDev;
 
@@ -4605,8 +4612,8 @@ int yaffs_ReadDataFromFile(yaffs_Object * in, __u8 * buffer, loff_t offset,
 			   int nBytes)
 {
 
-	int chunk;
-	int start;
+	__u32 chunk;
+	__u32 start;
 	int nToCopy;
 	int n = nBytes;
 	int nDone = 0;
@@ -4725,8 +4732,8 @@ int yaffs_WriteDataToFile(yaffs_Object * in, const __u8 * buffer, loff_t offset,
 			  int nBytes, int writeThrough)
 {
 
-	int chunk;
-	int start;
+	__u32 chunk;
+	__u32 start;
 	int nToCopy;
 	int n = nBytes;
 	int nDone = 0;
@@ -4960,8 +4967,8 @@ int yaffs_ResizeFile(yaffs_Object * in, loff_t newSize)
 {
 
 	int oldFileSize = in->variant.fileVariant.fileSize;
-	int newSizeOfPartialChunk;
-	int newFullChunks;
+	__u32 newSizeOfPartialChunk;
+	__u32 newFullChunks;
 
 	yaffs_Device *dev = in->myDev;
 
@@ -5391,7 +5398,7 @@ static int yaffs_Scan(yaffs_Device * dev)
 	yaffs_BlockState state;
 	yaffs_Object *hardList = NULL;
 	yaffs_BlockInfo *bi;
-	int sequenceNumber;
+	__u32 sequenceNumber;
 	yaffs_ObjectHeader *oh;
 	yaffs_Object *in;
 	yaffs_Object *parent;
@@ -5958,7 +5965,7 @@ static int yaffs_ScanBackwards(yaffs_Device * dev)
 	yaffs_BlockState state;
 	yaffs_Object *hardList = NULL;
 	yaffs_BlockInfo *bi;
-	int sequenceNumber;
+	__u32 sequenceNumber;
 	yaffs_ObjectHeader *oh;
 	yaffs_Object *in;
 	yaffs_Object *parent;
@@ -7232,7 +7239,7 @@ int yaffs_GutsInitialise(yaffs_Device * dev)
 			dev->nShortOpCaches = YAFFS_MAX_SHORT_OP_CACHES;
 		}
 
-		buf = dev->srCache =  YMALLOC(srCacheBytes);
+		buf = (__u8 *)(dev->srCache =  YMALLOC(srCacheBytes));
 
 		if(dev->srCache)
 			memset(dev->srCache,0,srCacheBytes);
@@ -7489,3 +7496,18 @@ static int yaffs_CheckStructures(void)
 
 	    return YAFFS_OK;
 }
+
+#ifdef NO_Y_INLINE
+/* Function to manipulate block info */
+yaffs_BlockInfo *yaffs_GetBlockInfo(yaffs_Device * dev, int blk)
+{
+	if (blk < dev->internalStartBlock || blk > dev->internalEndBlock) {
+		T(YAFFS_TRACE_ERROR,
+		  (TSTR
+		   ("**>> yaffs: getBlockInfo block %d is not valid" TENDSTR),
+		   blk));
+		YBUG();
+	}
+	return &dev->blockInfo[blk - dev->internalStartBlock];
+}
+#endif

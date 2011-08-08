@@ -502,7 +502,7 @@ int yaffs_TagsCompatabilityMarkNANDBlockBad(struct yaffs_DeviceStruct *dev,
 int yaffs_TagsCompatabilityQueryNANDBlock(struct yaffs_DeviceStruct *dev,
 					  int blockNo, yaffs_BlockState *
 					  state,
-					  int *sequenceNumber)
+					  __u32 *sequenceNumber)
 {
 
 	yaffs_Spare spare0, spare1;

@@ -31,7 +31,7 @@ int yaffs_TagsCompatabilityMarkNANDBlockBad(struct yaffs_DeviceStruct *dev,
 					    int blockNo);
 int yaffs_TagsCompatabilityQueryNANDBlock(struct yaffs_DeviceStruct *dev,
 					  int blockNo, yaffs_BlockState *
-					  state, int *sequenceNumber);
+					  state, __u32 *sequenceNumber);
 
 void yaffs_CalcTagsECC(yaffs_Tags * tags);
 int yaffs_CheckECCOnTags(yaffs_Tags * tags);
