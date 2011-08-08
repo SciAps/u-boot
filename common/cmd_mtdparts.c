@@ -106,6 +106,8 @@
 #include <onenand_uboot.h>
 #endif
 
+#include "mtd_parts.h"
+
 /* special size referring to all the remaining space in a partition */
 #define SIZE_REMAINING		0xFFFFFFFF
 

@@ -26,5 +26,5 @@
 extern int mtd_get_part_priv(const char *partname, int *idx,
 			struct mtd_device **dev, loff_t *off,
 			loff_t *size, void **cookie, void **priv);
-extern void mtd_set_part_priv(voi *cookie, void *priv);
+extern void mtd_set_part_priv(void *cookie, void *priv);
 #endif
