@@ -11,8 +11,6 @@
 
 extern void cmd_yaffs_mount(char *mp);
 extern void cmd_yaffs_umount(char *mp);
-extern void cmd_yaffs_read_file(char *fn);
-extern void cmd_yaffs_write_file(char *fn,char bval,int sizeOfFile);
 extern void cmd_yaffs_ls(const char *mountpt, int longlist);
 extern void cmd_yaffs_mwrite_file(char *fn, char *addr, int size);
 extern void cmd_yaffs_mread_file(char *fn, char *addr);
@@ -49,30 +47,6 @@ int do_yls (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
     return(0);
 }
 
-int do_yrd (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-    char *filename = argv[1];
-    printf ("Reading file %s ", filename);
-
-    cmd_yaffs_read_file(filename);
-
-    printf ("done\n");
-    return(0);
-}
-
-int do_ywr (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-    char *filename = argv[1];
-    ulong value = simple_strtoul(argv[2], NULL, 16);
-    ulong numValues = simple_strtoul(argv[3], NULL, 16);
-
-    printf ("Writing value (%x) %x times to %s... ", value, numValues, filename);
-
-    cmd_yaffs_write_file(filename,value,numValues);
-
-    printf ("done\n");
-    return(0);
-}
 
 int do_yrdm (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
@@ -156,18 +130,6 @@ U_BOOT_CMD(
     yls,    4,  0,  do_yls,
     "yaffs ls",
     "[-l] name"
-);
-
-U_BOOT_CMD(
-    yrd,    2,  0,  do_yrd,
-    "read file from yaffs",
-    "filename"
-);
-
-U_BOOT_CMD(
-    ywr,    4,  0,  do_ywr,
-    "write file to yaffs",
-    "filename value num_vlues"
 );
 
 U_BOOT_CMD(

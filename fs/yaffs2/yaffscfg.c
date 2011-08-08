@@ -209,62 +209,6 @@ int yaffs_StartUp(void)
 	return 0;
 }
 
-
-void make_a_file(char *yaffsName,char bval,int sizeOfFile)
-{
-	int outh;
-	int i;
-	unsigned char buffer[100];
-
-	outh = yaffs_open(yaffsName, O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IWRITE);
-	if (outh < 0)
-	{
-		printf("Error opening file: %d\n", outh);
-		return;
-	}
-
-	memset(buffer,bval,100);
-
-	do{
-		i = sizeOfFile;
-		if(i > 100) i = 100;
-		sizeOfFile -= i;
-
-		yaffs_write(outh,buffer,i);
-
-	} while (sizeOfFile > 0);
-
-
-	yaffs_close(outh);
-}
-
-void read_a_file(char *fn)
-{
-	int h;
-	int i = 0;
-	unsigned char b;
-
-	h = yaffs_open(fn, O_RDWR,0);
-	if(h<0)
-	{
-		printf("File not found\n");
-		return;
-	}
-
-	while(yaffs_read(h,&b,1)> 0)
-	{
-		printf("%02x ",b);
-		i++;
-		if(i > 32)
-		{
-		   printf("\n");
-		   i = 0;;
-		 }
-	}
-	printf("\n");
-	yaffs_close(h);
-}
-
 void cmd_yaffs_mount(char *mp)
 {
 	yaffs_StartUp();
@@ -289,20 +233,6 @@ void cmd_yaffs_umount(char *mp)
 	if( yaffs_unmount(mp) == -1)
 		printf("Error umounting %s, return value: %d\n", mp, yaffsfs_GetError());
 }
-
-void cmd_yaffs_write_file(char *yaffsName,char bval,int sizeOfFile)
-{
-	checkMount();
-	make_a_file(yaffsName,bval,sizeOfFile);
-}
-
-
-void cmd_yaffs_read_file(char *fn)
-{
-	checkMount();
-	read_a_file(fn);
-}
-
 
 void cmd_yaffs_mread_file(char *fn, char *addr)
 {
