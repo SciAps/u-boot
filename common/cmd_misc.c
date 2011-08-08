@@ -55,7 +55,7 @@ U_BOOT_CMD(
 );
 
 #ifdef CONFIG_CMD_TIME
-int do_time (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_time (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong start;
 	ulong delta;
