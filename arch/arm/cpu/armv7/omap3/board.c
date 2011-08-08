@@ -273,6 +273,9 @@ static int do_switch_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const arg
 		case NAND_ECC_CHIP:
 			printf("Internal to NAND Hardware ECC\n");
 			break;
+		default:
+			printf("Unknown ECC method %d!\n", nand->ecc.mode);
+			return -1;
 		}
 		return 0;
 	}
