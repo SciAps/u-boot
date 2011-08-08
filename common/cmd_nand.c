@@ -98,7 +98,7 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 
 /* ------------------------------------------------------------------------- */
 
-static int set_dev(int dev)
+int nand_set_dev(int dev)
 {
 	if (dev < 0 || dev >= CONFIG_SYS_MAX_NAND_DEVICE ||
 	    !nand_info[dev].name) {
@@ -161,7 +161,7 @@ static int get_part(const char *partname, int *idx, loff_t *off, loff_t *size)
 	*size = part->size;
 	*idx = dev->id->num;
 
-	ret = set_dev(*idx);
+	ret = nand_set_dev(*idx);
 	if (ret)
 		return ret;
 
@@ -283,7 +283,7 @@ int do_nand_env_oob(cmd_tbl_t *cmdtp, int argc, char *const argv[])
 		return 1;
 	}
 
-	set_dev(0);
+	nand_set_dev(0);
 
 	if (!strcmp(cmd, "get")) {
 		ret = get_nand_env_oob(nand, &nand_env_oob_offset);
@@ -423,7 +423,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		dev = (int)simple_strtoul(argv[2], NULL, 10);
-		set_dev(dev);
+		nand_set_dev(dev);
 
 		return 0;
 	}
