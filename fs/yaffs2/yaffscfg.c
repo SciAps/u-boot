@@ -61,10 +61,25 @@ __u32 yaffsfs_CurrentTime(void)
 	return 0;
 }
 
+#ifdef YAFFS_DEBUG_MALLOC
+void *yaffs_malloc(const char *func, int line, size_t size)
+{
+	void *ptr;
+	ptr =  malloc(size);
+	if (!ptr)
+		printf("%s:%d %s failed to allocate %u bytes!\n", func, line, __FUNCTION__, (unsigned int) size);
+	return ptr;
+}
+#else
 void *yaffs_malloc(size_t size)
 {
-	return malloc(size);
+	void *ptr;
+
+	ptr = malloc(size);
+	if (!ptr)
+		printf("%s failed to allocate %u bytes!\n", __FUNCTION__, (unsigned int)size);
 }
+#endif
 
 void yaffs_free(void *ptr)
 {

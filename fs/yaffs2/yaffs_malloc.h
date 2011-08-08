@@ -19,7 +19,11 @@
 #include <stdlib.h>
 #endif
 
-void *yaffs_malloc(size_t size);
+#ifdef YAFFS_DEBUG_MALLOC
+extern void *yaffs_malloc(const char *func, int line, size_t size);
+#else
+extern void *yaffs_malloc(size_t size);
+#endif
 void yaffs_free(void *ptr);
 
 #endif

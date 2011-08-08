@@ -54,12 +54,18 @@
 #define Y_INLINE inline
 #endif
 
+#ifdef YAFFS_DEBUG_MALLOC
+#define YMALLOC(x) yaffs_malloc(__FUNCTION__, __LINE__, (x))
+#define YMALLOC_ALT(x) yaffs_malloc(__FUNCTION__, __LINE__, (x))
+#define YMALLOC_DMA(x) yaffs_malloc(__FUNCTION__, __LINE__, (x))
+#else
 #define YMALLOC(x) yaffs_malloc(x)
-#define YFREE(x)   free(x)
 #define YMALLOC_ALT(x) yaffs_malloc(x)
+#define YMALLOC_DMA(x) yaffs_malloc(x)
+#endif
+#define YFREE(x)   free(x)
 #define YFREE_ALT(x)   free(x)
 
-#define YMALLOC_DMA(x) yaffs_malloc(x)
 
 #define YYIELD()  do {} while(0)
 

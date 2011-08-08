@@ -25,6 +25,10 @@
 #include <string.h> // for memset
 #endif
 
+#if (CONFIG_SYS_MALLOC_LEN < (512 << 10))
+#error Malloc Area too small for YAFFS, increas CONFIG_SYS_MALLOC_LEN to >= 512KiB
+#endif
+
 #define YAFFSFS_MAX_SYMLINK_DEREFERENCES 5
 
 #ifndef NULL

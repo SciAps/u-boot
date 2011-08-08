@@ -96,6 +96,8 @@
 
 #elif defined CONFIG_YAFFS_DIRECT
 
+#define YAFFS_DEBUG_MALLOC /* Complain if yaffs_malloc() fails */
+
 /* Direct interface */
 #include "ydirectenv.h"
 
