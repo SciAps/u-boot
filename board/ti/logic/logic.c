@@ -88,7 +88,7 @@ unsigned int logic_identify(void)
 			printf(" OMAP35xx");
 			if (val) {
 				printf(" Torpedo\n");
-				val = MACH_TYPE_OMAP3530_LV_SOM;
+				val = MACH_TYPE_OMAP3_TORPEDO;
 			} else {
 				printf(" SOM LV\n");
 				val = MACH_TYPE_OMAP3530_LV_SOM;
