@@ -159,8 +159,8 @@
 #define CONFIG_CMD_NAND		/* NAND support			*/
 #define CONFIG_MTD_DEVICE	/* needed for MTD mtdparts support	*/
 #define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
-#define MTDIDS_DEFAULT			"nand0=nand"
-#define MTDPARTS_DEFAULT		"mtdparts=nand:512k(x-loader),"\
+#define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
+#define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"768k(u-boot),128k(u-boot-env),"\
 					"4m(kernel),-(fs)"
 
