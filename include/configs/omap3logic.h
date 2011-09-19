@@ -161,7 +161,7 @@
 #define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
 #define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
 #define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
-					"768k(u-boot),128k(u-boot-env),"\
+					"1920k(u-boot),128k(u-boot-env),"\
 					"4m(kernel),-(fs)"
 
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands	*/
