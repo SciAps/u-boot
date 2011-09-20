@@ -45,6 +45,7 @@
 
 #define YCHAR char
 #define YUCHAR unsigned char
+#if 0
 #define _Y(x)     x
 #define yaffs_strcpy(a,b)    strcpy(a,b)
 #define yaffs_strncpy(a,b,c) strncpy(a,b,c)
@@ -52,6 +53,7 @@
 #define yaffs_strlen(s)	     strlen(s)
 #define yaffs_sprintf	     sprintf
 #define yaffs_toupper(a)     toupper(a)
+#endif
 
 #define Y_INLINE inline
 
@@ -95,8 +97,6 @@
 	({ int x = __builtin_choose_expr(assertion, 0, (void)0); (void) x; })
 
 #elif defined CONFIG_YAFFS_DIRECT
-
-#define YAFFS_DEBUG_MALLOC /* Complain if yaffs_malloc() fails */
 
 /* Direct interface */
 #include "ydirectenv.h"
@@ -161,29 +161,8 @@
 #endif
 
 /* Errno entries */
-#ifndef ENOENT
-#define ENOENT	2
-#endif
 
-#ifndef ENOMEM
-#define ENOMEM	12
-#endif
-
-#ifndef EEXIST
-#define EEXIST	17
-#endif
-
-#ifndef ENOSPC
-#define ENOSPC	28
-#endif
-
-#ifndef ERANGE
-#define ERANGE	34
-#endif
-
-#ifndef ENODATA
-#define ENODATA	61
-#endif
+#include "yaffsfs_errno.h"
 
 /* see yaffs_fs.c */
 extern unsigned int yaffs_traceMask;
