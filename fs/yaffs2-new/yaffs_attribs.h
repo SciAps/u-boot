@@ -13,21 +13,16 @@
  * Note: Only YAFFS headers are LGPL, YAFFS C code is covered by GPL.
  */
 
-#ifndef __YAFFS_CHECKPTRW_H__
-#define __YAFFS_CHECKPTRW_H__
+#ifndef __YAFFS_ATTRIBS_H__
+#define __YAFFS_ATTRIBS_H__
 
 #include "yaffs_guts.h"
 
-int yaffs2_checkpt_open(struct yaffs_dev *dev, int writing);
-
-int yaffs2_checkpt_wr(struct yaffs_dev *dev, const void *data, int n_bytes);
-
-int yaffs2_checkpt_rd(struct yaffs_dev *dev, void *data, int n_bytes);
-
-int yaffs2_get_checkpt_sum(struct yaffs_dev *dev, u32 * sum);
-
-int yaffs_checkpt_close(struct yaffs_dev *dev);
-
-int yaffs2_checkpt_invalidate_stream(struct yaffs_dev *dev);
+void yaffs_load_attribs(struct yaffs_obj *obj, struct yaffs_obj_hdr *oh);
+void yaffs_load_attribs_oh(struct yaffs_obj_hdr *oh, struct yaffs_obj *obj);
+void yaffs_attribs_init(struct yaffs_obj *obj, u32 gid, u32 uid, u32 rdev);
+void yaffs_load_current_time(struct yaffs_obj *obj, int do_a, int do_c);
+int yaffs_set_attribs(struct yaffs_obj *obj, struct iattr *attr);
+int yaffs_get_attribs(struct yaffs_obj *obj, struct iattr *attr);
 
 #endif

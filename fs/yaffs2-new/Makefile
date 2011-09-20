@@ -19,13 +19,19 @@
 #EXTRA_COMPILE_FLAGS = -DYAFFS_IGNORE_TAGS_ECC
 include $(TOPDIR)/config.mk
 
-LIB = $(obj)libyaffs2.o
+LIB = $(obj)libyaffs2-new.o
 
 COBJS-$(CONFIG_YAFFS2_NEW) := \
-	yaffscfg.o yaffs_ecc.o yaffsfs.o yaffs_guts.o yaffs_packedtags1.o \
-	yaffs_tagscompat.o yaffs_packedtags2.o yaffs_tagsvalidity.o \
-	yaffs_nand.o yaffs_checkptrw.o yaffs_qsort.o yaffs_mtdif.o \
-	yaffs_mtdif2.o
+	yaffs_uboot.o yaffs_guts.o yaffs_summary.o yaffs_yaffs2.o \
+	yaffs_allocator.o yaffs_nand.o yaffs_verify.o yaffs_nameval.o \
+	yaffs_checkptrw.o yaffs_tagscompat.o yaffs_bitmap.o yaffs_attribs.o \
+	yaffs_packedtags2.o yaffs_qsort.o yaffs_yaffs1.o yaffs_ecc.o
+
+#COBJS-$(CONFIG_YAFFS2) := \
+#	yaffscfg.o yaffs_ecc.o yaffsfs.o yaffs_guts.o yaffs_packedtags1.o \
+#	yaffs_tagscompat.o yaffs_packedtags2.o yaffs_tagsvalidity.o \
+#	yaffs_nand.o yaffs_checkptrw.o yaffs_qsort.o yaffs_mtdif.o \
+#	yaffs_mtdif2.o
 
 SRCS    := $(COBJS-y:.o=.c)
 OBJS    := $(addprefix $(obj),$(COBJS-y))
