@@ -24,7 +24,6 @@
 
 #include "yaffs_mtdif.h"
 #include "yaffs_mtdif2.h"
-#include "yaffs_flashif.h"
 #include "nand.h"
 
 #include "mtd_parts.h"
