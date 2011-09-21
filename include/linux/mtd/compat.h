@@ -17,11 +17,21 @@
 #define KERN_INFO
 #define KERN_DEBUG
 
+#ifndef kmalloc
 #define kmalloc(size, flags)	malloc(size)
+#endif
+#ifndef kzalloc
 #define kzalloc(size, flags)	calloc(size, 1)
+#endif
+#ifndef vmalloc
 #define vmalloc(size)		malloc(size)
+#endif
+#ifndef kfree
 #define kfree(ptr)		free(ptr)
+#endif
+#ifndef vfree
 #define vfree(ptr)		free(ptr)
+#endif
 
 #define DECLARE_WAITQUEUE(...)	do { } while (0)
 #define add_wait_queue(...)	do { } while (0)

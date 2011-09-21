@@ -22,7 +22,9 @@
 #include "yaffscfg.h"
 #include "yaffsfs_errno.h"
 
+#include "yportenv.h"
 #include "yaffsfs.h"
+#include "yaffs_trace.h"
 
 void yaffsfs_Lock(void)
 {
@@ -53,13 +55,12 @@ u32 yaffsfs_CurrentTime(void)
 }
 
 unsigned int yaffs_wr_attempts;
-unsigned int yaffs_trace_mask = 0xffffffff;
+unsigned int yaffs_trace_mask = 0;
 
 void yaffs_startup(void)
 {
-#if 0
-	yaffs_initialise(NULL);
-#endif
+	yaffs_trace_mask = YAFFS_TRACE_ERROR | YAFFS_TRACE_BUG | YAFFS_TRACE_ALWAYS;
+	yaffsfs_initialise();
 }
 
 int cmd_yaffs_mount(const char *mp)
@@ -84,7 +85,36 @@ int cmd_yaffs_umount(char *mp)
 
 int cmd_yaffs_ls(const char *mountpt, int longlist)
 {
-	return -EINVAL;
+	int i;
+	yaffs_DIR *d;
+	yaffs_dirent *de;
+	struct yaffs_stat stat;
+	char tempstr[255];
+
+	d = yaffs_opendir(mountpt);
+
+	if(!d)
+	{
+		printf("opendir failed\n");
+		return -EINVAL;
+	}
+	else
+	{
+		for(i = 0; (de = yaffs_readdir(d)) != NULL; i++)
+		{
+			if (longlist)
+			{
+				sprintf(tempstr, "%s/%s", mountpt, de->d_name);
+				yaffs_stat(tempstr, &stat);
+				printf("%-25s\t%7ld\n",de->d_name, stat.st_size);
+			}
+			else
+			{
+				printf("%s\n",de->d_name);
+			}
+		}
+	}
+	return 0;
 }
 
 int cmd_yaffs_df(const char *path, loff_t *size)
@@ -99,25 +129,59 @@ int cmd_yaffs_mwrite_file(char *fn, char *addr, int size)
 
 int cmd_yaffs_mread_file(char *fn, char *addr, long *size)
 {
-	return -EINVAL;
+	int h;
+	struct yaffs_stat s;
+
+	yaffs_stat(fn,&s);
+
+	printf ("Copy %s to 0x%p... ", fn, addr);
+	h = yaffs_open(fn, O_RDWR,0);
+	if(h<0)
+	{
+		printf("File not found\n");
+		return -ENOENT;
+	}
+
+	yaffs_read(h,addr,(int)s.st_size);
+	printf("\t[DONE]\n");
+	*size = s.st_size;
+
+	yaffs_close(h);
+	return yaffsfs_get_error();
 }
 
 int cmd_yaffs_mkdir(const char *dir)
 {
-	return -EINVAL;
+	int retval = yaffs_mkdir(dir, 0);
+
+	if ( retval < 0)
+		printf("yaffs_mkdir returning error: %d\n", yaffsfs_get_error());
+	return yaffsfs_get_error();
 }
 
 int cmd_yaffs_rmdir(const char *dir)
 {
-	return -EINVAL;
+	int retval = yaffs_rmdir(dir);
+
+	if ( retval < 0)
+		printf("yaffs_rmdir returning error: %d\n", yaffsfs_get_error());
+	return yaffsfs_get_error();
 }
 
 int cmd_yaffs_rm(const char *path)
 {
-	return -EINVAL;
+	int retval = yaffs_unlink(path);
+
+	if ( retval < 0)
+		printf("yaffs_unlink returning error: %d\n", yaffsfs_get_error());
+	return yaffsfs_get_error();
 }
 
 int cmd_yaffs_mv(const char *oldPath, const char *newPath)
 {
-	return -EINVAL;
+	int retval = yaffs_rename(newPath, oldPath);
+
+	if ( retval < 0)
+		printf("yaffs_unlink returning error: %d\n", yaffsfs_get_error());
+	return yaffsfs_get_error();
 }

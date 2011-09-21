@@ -150,6 +150,10 @@
 
 #endif
 
+#ifndef NAME_MAX
+#define NAME_MAX	256
+#endif
+
 /* Mode flags */
 
 #ifndef XATTR_CREATE
@@ -160,6 +164,58 @@
 #define XATTR_REPLACE	2
 #endif
 
+#ifndef S_IFMT
+#define S_IFMT		0170000
+#endif
+
+#ifndef S_IFLNK
+#define S_IFLNK		0120000
+#endif
+
+#ifndef S_IFDIR
+#define S_IFDIR		0040000
+#endif
+
+#ifndef S_IFREG
+#define S_IFREG		0100000
+#endif
+
+#ifndef S_IREAD
+#define S_IREAD		0000400
+#endif
+
+#ifndef S_IWRITE
+#define	S_IWRITE	0000200
+#endif
+
+#ifndef O_RDONLY
+#define O_RDONLY	00
+#endif
+
+#ifndef O_WRONLY
+#define O_WRONLY	01
+#endif
+
+#ifndef O_RDWR
+#define O_RDWR		02
+#endif
+
+#ifndef O_CREAT
+#define O_CREAT 	0100
+#endif
+
+#ifndef O_EXCL
+#define O_EXCL		0200
+#endif
+
+#ifndef O_TRUNC
+#define O_TRUNC		01000
+#endif
+
+#ifndef O_APPEND
+#define O_APPEND	02000
+#endif
+
 /* Errno entries */
 
 #include "yaffsfs_errno.h"
@@ -168,11 +224,12 @@
 extern unsigned int yaffs_traceMask;
 extern unsigned int yaffs_wr_attempts;
 
+#define CONFIG_YAFFS_DEBUG
 
 #ifdef CONFIG_YAFFS_DEBUG
 #define yaffs_trace(msk, fmt, ...) do {		\
 	if (yaffs_trace_mask & (msk)) \
-		printf("yaffs: " fmt "\n", ##__VA_ARGS); \
+		printf(fmt "\n", ##__VA_ARGS__); \
 	} while (0)
 #else
 #define yaffs_trace(msk, fmt, ...) do { \

@@ -65,8 +65,8 @@ int do_yrdm (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
     long size;
     char buf[12];
-    char *filename = argv[1];
-    ulong addr = simple_strtoul(argv[2], NULL, 16);
+    char *filename = argv[2];
+    ulong addr = simple_strtoul(argv[1], NULL, 16);
 
     cmd_yaffs_mread_file(filename, (char *)addr, &size);
 
@@ -134,55 +134,55 @@ int do_ydump (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 U_BOOT_CMD(
     ymount, 3,  0,  do_ymount,
     "YAFFS mount",
-    ""
+    "<partition>"
 );
 
 U_BOOT_CMD(
     yumount, 3,  0,  do_yumount,
     "YAFFS unmount",
-    ""
+    "<partition>"
 );
 
 U_BOOT_CMD(
     yls,    4,  0,  do_yls,
     "YAFFS ls",
-    "[-l] name"
+    "[-l] <name>"
 );
 
 U_BOOT_CMD(
     ydf,    2,  0,  do_yls,
     "YAFFS disk free",
-    "[-l] name"
+    "[-l] <dirname>"
 );
 
 U_BOOT_CMD(
     yrdm,   3,  0,  do_yrdm,
     "YAFFS read file to memory",
-    "filename addr"
+    "<addr> <filename>"
 );
 
 U_BOOT_CMD(
     ywrm,   4,  0,  do_ywrm,
     "YAFFS write file from memory",
-    "filename addr size"
+    "<filename> <addr> <size>"
 );
 
 U_BOOT_CMD(
     ymkdir, 2,  0,  do_ymkdir,
     "YAFFS mkdir",
-    "dirname"
+    "<dirname>"
 );
 
 U_BOOT_CMD(
     yrmdir, 2,  0,  do_yrmdir,
     "YAFFS rmdir",
-    "dirname"
+    "<dirname>"
 );
 
 U_BOOT_CMD(
     yrm,    2,  0,  do_yrm,
     "YAFFS rm",
-    "path"
+    "<path>"
 );
 
 U_BOOT_CMD(

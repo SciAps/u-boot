@@ -170,7 +170,7 @@ typedef enum {
 	YAFFSFS_ACTION_DESTROY
 } yaffsfs_action_t;
 
-static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaffsfs_action_t action)
+static struct yaffs_dev *yaffsfs_FindDevice(const char *path, char **restOfPath, yaffsfs_action_t action)
 {
 	int slash_cnt, i, ret;
 	char partname[N_MAX_PARTLEN];
@@ -179,7 +179,7 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 	int part_idx;
 	struct mtd_device *dev;
 	void *cookie;
-	yaffs_Device *flashDev;
+	struct yaffs_dev *flashDev;
 	struct mtd_info *mtd;
 
 	if (!path)
@@ -209,7 +209,7 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 
 	switch(action) {
 	case YAFFSFS_ACTION_FIND:
-		return (yaffs_Device *)part_priv;
+		return (struct yaffs_dev *)part_priv;
 
 	case YAFFSFS_ACTION_CREATE:
 		if (part_priv) {
@@ -219,7 +219,7 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 
 		/* First time we're seeing this device, create it using
 		   information inside of the MTD_DEVICE structure */
-		flashDev = malloc(sizeof(yaffs_Device));
+		flashDev = malloc(sizeof(struct yaffs_dev));
 		if (!flashDev) {
 			printf("%s:%d out of memory!\n", __FUNCTION__, __LINE__);
 			return NULL;
@@ -227,7 +227,7 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 		memset(flashDev, 0, sizeof(*flashDev));
 
 
-		printf("%s: initialise yaffs_Device %p\n", __FUNCTION__, flashDev);
+		printf("%s: initialise struct yaffs_dev %p\n", __FUNCTION__, flashDev);
 
 		/* Side effect of mtd_get_part_priv() is to set nand_curr_device */
 		mtd = &nand_info[nand_curr_device];
@@ -244,8 +244,12 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 		flashDev->readChunkWithTagsFromNAND = nandmtd2_ReadChunkWithTagsFromNAND;
 		flashDev->markNANDBlockBad = nandmtd2_MarkNANDBlockBad;
 		flashDev->queryNANDBlock = nandmtd2_QueryNANDBlock;
-		flashDev->spareBuffer = YMALLOC(mtd->oobsize);
 		flashDev->isYaffs2 = 1;
+#if 1
+		Yaffs_DeviceToContext(dev)->spareBuffer = YMALLOC(mtd->oobsize);
+#else
+		flashDev->spareBuffer = YMALLOC(mtd->oobsize);
+#endif
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 		flashDev->nDataBytesPerChunk = mtd->writesize;
 		flashDev->nChunksPerBlock = mtd->erasesize / mtd->writesize;
@@ -279,7 +283,7 @@ static yaffs_Device *yaffsfs_FindDevice(const char *path, char **restOfPath, yaf
 static yaffs_Object *yaffsfs_FindRoot(const char *path, char **restOfPath)
 {
 
-	yaffs_Device *dev;
+	struct yaffs_dev *dev;
 
 	dev= yaffsfs_FindDevice(path,restOfPath, YAFFSFS_ACTION_FIND);
 	if(dev && dev->isMounted)
@@ -1111,7 +1115,7 @@ int yaffs_mount(const char *path)
 {
 	int retVal=-1;
 	int result=YAFFS_FAIL;
-	yaffs_Device *dev=NULL;
+	struct yaffs_dev *dev=NULL;
 	char *dummy;
 
 	T(YAFFS_TRACE_ALWAYS,("yaffs: Mounting %s\n",path));
@@ -1150,7 +1154,7 @@ int yaffs_mount(const char *path)
 int yaffs_unmount(const char *path)
 {
 	int retVal=-1;
-	yaffs_Device *dev=NULL;
+	struct yaffs_dev *dev=NULL;
 	char *dummy;
 
 	yaffsfs_Lock();
@@ -1208,7 +1212,7 @@ int yaffs_unmount(const char *path)
 loff_t yaffs_freespace(const char *path)
 {
 	loff_t retVal=-1;
-	yaffs_Device *dev=NULL;
+	struct yaffs_dev *dev=NULL;
 	char *dummy;
 
 	yaffsfs_Lock();
@@ -1554,7 +1558,7 @@ int yaffs_DumpDevStruct(const char *path)
 
 	if(obj)
 	{
-		yaffs_Device *dev = obj->myDev;
+		struct yaffs_dev *dev = obj->myDev;
 
 		printf("\n"
 			   "nPageWrites.......... %d\n"

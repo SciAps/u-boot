@@ -152,7 +152,8 @@
 #define CONFIG_CMD_FAT		/* FAT support			*/
 #define CONFIG_CMD_JFFS2	/* JFFS2 Support		*/
 #define CONFIG_CMD_NAND_YAFFS	/* YAFFS NAND Support		*/
-#define CONFIG_YAFFS2		/* YAFFS2 Support		*/
+// #define CONFIG_YAFFS2		/* YAFFS2 Support		*/
+#define CONFIG_YAFFS2_NEW	/* Newer YAFFS2 Support		*/
 
 #define CONFIG_CMD_I2C		/* I2C serial bus support	*/
 #define CONFIG_CMD_MMC		/* MMC support			*/
