@@ -192,6 +192,9 @@ int saveenv(void)
 	char	*res;
 	int	ret = 0;
 	nand_erase_options_t nand_erase_options;
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	int	current_ecc_method;
+#endif
 
 	memset(&nand_erase_options, 0, sizeof(nand_erase_options));
 	nand_erase_options.length = CONFIG_ENV_RANGE;
@@ -208,11 +211,19 @@ int saveenv(void)
 	env_new.crc   = crc32(0, env_new.data, ENV_SIZE);
 	env_new.flags = ++env_flags; /* increase the serial */
 
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_default(&current_ecc_method);
+#endif
+
 	if(gd->env_valid == 1) {
 		puts("Erasing redundant NAND...\n");
 		nand_erase_options.offset = CONFIG_ENV_OFFSET_REDUND;
-		if (nand_erase_opts(&nand_info[0], &nand_erase_options))
+		if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+			nand_switch_ecc_ecc(current_ecc_method);
+#endif
 			return 1;
+		}
 
 		puts("Writing to redundant NAND... ");
 		ret = writeenv(CONFIG_ENV_OFFSET_REDUND,
@@ -220,8 +231,12 @@ int saveenv(void)
 	} else {
 		puts("Erasing NAND...\n");
 		nand_erase_options.offset = CONFIG_ENV_OFFSET;
-		if (nand_erase_opts(&nand_info[0], &nand_erase_options))
+		if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+			nand_switch_ecc_ecc(current_ecc_method);
+#endif
 			return 1;
+		}
 
 		puts("Writing to NAND... ");
 		ret = writeenv(CONFIG_ENV_OFFSET,
@@ -229,11 +244,17 @@ int saveenv(void)
 	}
 	if (ret) {
 		puts("FAILED!\n");
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+		nand_switch_ecc_ecc(current_ecc_method);
+#endif
 		return 1;
 	}
 
 	puts("done\n");
 
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_method(current_ecc_method);
+#endif
 	gd->env_valid = (gd->env_valid == 2 ? 1 : 2);
 
 	return ret;
@@ -246,6 +267,9 @@ int saveenv(void)
 	ssize_t	len;
 	char	*res;
 	nand_erase_options_t nand_erase_options;
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	int current_ecc_method;
+#endif
 
 	memset(&nand_erase_options, 0, sizeof(nand_erase_options));
 	nand_erase_options.length = CONFIG_ENV_RANGE;
@@ -262,17 +286,32 @@ int saveenv(void)
 	}
 	env_new.crc   = crc32(0, env_new.data, ENV_SIZE);
 
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_default(&current_ecc_method);
+#endif
+	
 	puts("Erasing Nand...\n");
-	if (nand_erase_opts(&nand_info[0], &nand_erase_options))
+	if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+		nand_switch_ecc_method(current_ecc_method);
+#endif
 		return 1;
+	}
 
 	puts("Writing to Nand... ");
 	if (writeenv(CONFIG_ENV_OFFSET, (u_char *)&env_new)) {
 		puts("FAILED!\n");
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+		nand_switch_ecc_method(current_ecc_method);
+#endif
 		return 1;
 	}
 
 	puts("done\n");
+
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_method(current_ecc_method);
+#endif
 	return ret;
 }
 #endif /* CONFIG_ENV_OFFSET_REDUND */
@@ -283,25 +322,39 @@ int readenv(size_t offset, u_char * buf)
 	size_t end = offset + CONFIG_ENV_RANGE;
 	size_t amount_loaded = 0;
 	size_t blocksize, len;
-
 	u_char *char_ptr;
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	int current_ecc_method;
+#endif
 
 	blocksize = nand_info[0].erasesize;
 	if (!blocksize)
 		return 1;
 	len = min(blocksize, CONFIG_ENV_SIZE);
 
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_default(&current_ecc_method);
+#endif
+
 	while (amount_loaded < CONFIG_ENV_SIZE && offset < end) {
 		if (nand_block_isbad(&nand_info[0], offset)) {
 			offset += blocksize;
 		} else {
 			char_ptr = &buf[amount_loaded];
-			if (nand_read_skip_bad(&nand_info[0], offset, &len, char_ptr))
+			if (nand_read_skip_bad(&nand_info[0], offset, &len, char_ptr)) {
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+				nand_switch_ecc_method(current_ecc_method);
+#endif
+
 				return 1;
+			}
 			offset += blocksize;
 			amount_loaded += len;
 		}
 	}
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_method(current_ecc_method);
+#endif
 	if (amount_loaded != CONFIG_ENV_SIZE)
 		return 1;
 

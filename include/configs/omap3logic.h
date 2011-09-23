@@ -97,6 +97,9 @@
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
+/* But don't allow overwriting "defaultecc" */
+#define CONFIG_CHECK_SETENV
+
 #define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
@@ -164,7 +167,9 @@
 #define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1920k(u-boot),128k(u-boot-env),"\
 					"4m(kernel),-(fs)"
-
+#define CONFIG_NAND_SET_DEFAULT	/* Set default NAND access method */
+#define CONFIG_NAND_MULTIPLE_ECC	/* NAND has multiple ECC methods */
+#define CONFIG_TOUCHUP_ENV	/* Set board-specific environment vars */
 #define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands	*/
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_PING

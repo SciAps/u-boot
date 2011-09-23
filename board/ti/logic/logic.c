@@ -103,6 +103,73 @@ unsigned int logic_identify(void)
 	return val;
 }
 
+/*
+ * Set the default NAND ECC method used for the environment
+ */
+static int omap3logic_nand_default = -1;
+void nand_setup_default_ecc_method(void)
+{
+	if (omap_nand_chip_has_ecc())
+		omap3logic_nand_default = OMAP_ECC_CHIP;
+	else
+		omap3logic_nand_default = OMAP_ECC_HW;
+
+	omap_nand_switch_ecc(omap3logic_nand_default);
+}
+
+/*
+ * Switch NAND ECC method to that used for the environment,
+ * returning the current ECC method through *method
+ */
+void nand_switch_ecc_default(int *method)
+{
+	enum omap_nand_ecc_mode curr_mode;
+
+	curr_mode = omap_nand_current_ecc_method();
+	*method = (int) curr_mode;
+
+	if (curr_mode != omap3logic_nand_default)
+		omap_nand_switch_ecc(omap3logic_nand_default);
+}
+
+/*
+ * Switch ECC method
+ */
+void nand_switch_ecc_method(int method)
+{
+	enum omap_nand_ecc_mode curr_mode, new_mode;
+
+	curr_mode = omap_nand_current_ecc_method();
+	new_mode = (enum omap_nand_ecc_mode)method;
+	if (curr_mode != new_mode)
+		omap_nand_switch_ecc(new_mode);
+}
+
+/*
+ * Touchup the environment, specificaly to setenv "defaultecc"
+ */
+void touchup_env(void)
+{
+	if (omap3logic_nand_default == OMAP_ECC_CHIP)
+		setenv("defaultecc", "chip");
+	else if (omap3logic_nand_default == OMAP_ECC_HW)
+		setenv("defaultecc", "hw");
+	else
+		printf("%s: bad NAND ECC default %d!\n", __FUNCTION__, omap3logic_nand_default);
+}
+
+/*
+ * If the user tries to 'setenv foo', check if 'foo' is a "reserved" name.
+ * certain system variables should not be changed as they are board-specific
+ * variables
+ */
+int setenv_reserved_name(const char *name)
+{
+	if (!strcmp(name, "defaultecc"))
+		return 1;
+	return 0;
+}
+
 #ifdef CONFIG_USB_OMAP3
 /*
  * MUSB port on OMAP3EVM Rev >= E requires extvbus programming.
@@ -242,6 +309,8 @@ int misc_init_r(void)
 	dieid_num_r();
 
 	check_sysconfig_regs();
+
+	touchup_env();
 
 	return 0;
 }

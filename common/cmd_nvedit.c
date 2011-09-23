@@ -381,6 +381,13 @@ int do_env_set(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 2)
 		return cmd_usage(cmdtp);
 
+#ifdef CONFIG_CHECK_SETENV
+	if (setenv_reserved_name(argv[1])) {
+		printf("## Error: can not set variable \"%s\"\n", argv[1]);
+		return 1;
+	}
+#endif
+
 	return _do_env_set(flag, argc, argv);
 }
 

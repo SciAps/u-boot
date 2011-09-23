@@ -550,6 +550,12 @@ ready_exit:
 		
 }
 
+static enum omap_nand_ecc_mode current_ecc_method;
+enum omap_nand_ecc_mode omap_nand_current_ecc_method(void)
+{
+	return current_ecc_method;
+}
+
 /*
  * omap_nand_switch_ecc - switch the ECC operation b/w h/w ecc and s/w ecc.
  * The default is to come up on s/w ecc
@@ -593,14 +599,14 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 		nand->ecc.correct = omap_correct_data;
 		nand->ecc.calculate = omap_calculate_ecc;
 		omap_hwecc_init(nand);
-		printf("HW ECC selected\n");
+		printf("NAND: HW ECC selected\n");
 		if (nand->has_chip_ecc)
 			micron_set_chip_ecc(mtd, 0);
 	} else if (mode == OMAP_ECC_SOFT) {
 		nand->ecc.mode = NAND_ECC_SOFT;
 		/* Use mtd default settings */
 		nand->ecc.layout = NULL;
-		printf("SW ECC selected\n");
+		printf("NAND: SW ECC selected\n");
 		if (nand->has_chip_ecc)
 			micron_set_chip_ecc(mtd, 0);
 	} else if (mode == OMAP_ECC_CHIP) {
@@ -626,6 +632,8 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 		printf("NAND: unknown ECC mode %d\n", mode);
 		return;
  	}
+
+	current_ecc_method = mode;
 
 	/* Update NAND handling after ECC mode switch */
 	nand_scan_tail(mtd);

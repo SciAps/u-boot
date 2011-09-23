@@ -194,6 +194,11 @@ void set_default_env(const char *s)
 		error("Environment import failed: errno = %d\n", errno);
 	}
 	gd->flags |= GD_FLG_ENV_READY;
+#if defined(CONFIG_TOUCHUP_ENV)
+	/* On a restored environment, need to initialise board
+	 * specific variables */
+	touchup_env();
+#endif
 }
 
 /*

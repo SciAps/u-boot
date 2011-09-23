@@ -307,6 +307,13 @@ void	pciinfo	      (int, int);
 int	misc_init_f   (void);
 int	misc_init_r   (void);
 
+/* Environment/nand support functions */
+extern void nand_setup_default_ecc_method(void);
+extern void nand_switch_ecc_default(int *ecc_method);
+extern void nand_switch_ecc_method(int ecc_method);
+extern int setenv_reserved_name(const char *name);
+extern void touchup_env(void);
+
 /* common/exports.c */
 void	jumptable_init(void);
 

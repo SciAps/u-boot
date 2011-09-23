@@ -501,17 +501,14 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #if defined(CONFIG_CMD_NAND)
 	puts ("NAND:  ");
 	nand_init();		/* go init the NAND */
-#if defined(CONFIG_OMAP3_LOGIC)
-	/* Default NAND ECC to HW method, unless the chip has internal ECC,
-	 * then use CHIP method */
-	omap_nand_switch_ecc(OMAP_ECC_HW);
-	if (omap_nand_chip_has_ecc())
-		omap_nand_switch_ecc(OMAP_ECC_CHIP);
-#endif
 #endif
 
 #if defined(CONFIG_CMD_ONENAND)
 	onenand_init();
+#endif
+
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_setup_default_ecc_method(); /* Set the default ECC method */
 #endif
 
 #ifdef CONFIG_GENERIC_MMC

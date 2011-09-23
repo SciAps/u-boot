@@ -68,8 +68,10 @@ enum omap_nand_ecc_mode {
 	OMAP_ECC_HW,
 	OMAP_ECC_CHIP,
 };
-void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode);
+extern void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode);
+extern enum omap_nand_ecc_mode omap_nand_current_ecc_method(void);
 int omap_nand_chip_has_ecc(void);
+
 void power_init_r(void);
 void dieid_num_r(void);
 
