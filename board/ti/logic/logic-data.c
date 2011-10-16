@@ -848,6 +848,10 @@ int fetch_production_data(void)
 
 out:
 
+ 	/* Restore GPIO_OE registers back to reset state (All input) */
+	gpio_i2c_config_pin(GPIO_I2C_SDATA, GPIO_I2C_INPUT);
+	gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_INPUT);
+
 	/* Restore pins back to their intended use */
 	gpio_i2c_restore_pins();
 

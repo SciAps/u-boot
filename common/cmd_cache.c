@@ -60,6 +60,13 @@ int do_dcache ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		case 1:	dcache_enable ();
 			break;
 		default:
+#ifdef CONFIG_ARM
+			if (!strcmp(argv[1], "flush")) {
+				/* Flush all of memory */
+				flush_cache(0, ~0);
+				return 0;
+			}
+#endif
 			return cmd_usage(cmdtp);
 		}
 		/* FALL TROUGH */
@@ -95,6 +102,11 @@ U_BOOT_CMD(
 U_BOOT_CMD(
 	dcache,   2,   1,     do_dcache,
 	"enable or disable data cache",
+#ifdef CONFIG_ARM
+	"[on, off, flush]\n"
+	"    - enable, disable, or flush data (writethrough) cache"
+#else
 	"[on, off]\n"
 	"    - enable or disable data (writethrough) cache"
+#endif
 );

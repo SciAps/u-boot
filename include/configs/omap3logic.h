@@ -73,7 +73,8 @@
  */
 #define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB */
 						/* Sector */
-#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (512 << 10))
+#define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (6 << 20))
+
 /*
  * Hardware drivers
  */
@@ -204,6 +205,8 @@
  * TWL4030
  */
 #define CONFIG_TWL4030_POWER		1
+#define CONFIG_TWL4030_GPIO		1
+#define CONFIG_TWL4030_PWM		1
 
 /*
  * Board NAND Info.
@@ -502,5 +505,15 @@
 #define CONFIG_BOOTP_GATEWAY		0x00000002
 #define CONFIG_BOOTP_HOSTNAME		0x00000004
 #define CONFIG_BOOTP_BOOTPATH		0x00000010
+
+/* Add graphics support */
+#define CONFIG_VIDEO_OMAP3
+#define CONFIG_LCD
+#define LCD_BPP LCD_COLOR16
+#define CONFIG_CMD_BMP
+#define CONFIG_BMP_16BPP
+#define CONFIG_VIDEO_BMP_GZIP
+#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (2 << 20)
+#define CONFIG_SPLASH_SCREEN
 
 #endif /* __CONFIG_H */

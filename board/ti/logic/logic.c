@@ -36,10 +36,14 @@
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/dss.h>
 #include <i2c.h>
+#include <lcd.h>
+#include <twl4030.h>
 #include <asm/mach-types.h>
 #include "logic.h"
 #include "product_id.h"
+#include "splash-480x272.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -285,6 +289,124 @@ static void check_sysconfig_regs(void)
 		*(unsigned int *)OTG_SYSCONFIG = temp2;
 	}
 }
+
+/* LCD-required members */
+int lcd_line_length;  /* initialized in lcd.c */
+int lcd_color_fg = 0xFFFF;
+int lcd_color_bg = 0x0000;
+void *lcd_base;                  /* initialized in lcd.c */
+void *lcd_console_address;       /* where is this initialized? */
+short console_col = 0;
+short console_row = 0;
+vidinfo_t panel_info = {
+	.vl_col = 480,
+	.vl_row = 272,
+	.vl_bpix = LCD_COLOR16,
+};
+void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue) {}
+ulong calc_fbsize(void) { return 480*272*2; }
+
+/*
+ * Timings for LCD Display
+ */
+static const struct panel_config lcd_cfg = {
+	/* Timing for the 4.3" display */
+	.timing_h	= 0x00100229, /* DISPC_TIMING_H */
+	.timing_v	= 0x0030020a, /* DISPC_TIMING_V */
+	.pol_freq	= 0x0003b000, /* DISPC_POL_FREQ */
+	.divisor	= 0x0001000b, /* DISPC_DIVISOR */
+	.lcd_size	= 0x010f01df, /* DISPC_SIZE_LCD */
+	.panel_type	= 0x01, /* Active Matrix TFT */
+	.data_lines	= 0x01, /* 1=RGB16, 2=RGB18, 3=RGB24 */
+	.load_mode	= 0x02, /* Frame Mode */
+	.panel_color	= 0x00000000, /* black */
+};
+
+void lcd_ctrl_init(void *lcdbase)
+{
+	struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
+
+	printf("%s: lcdbase %p\n", __FUNCTION__, lcdbase);
+
+	/* configure DSS for single graphics layer */
+	omap3_dss_panel_config(&lcd_cfg);
+	writel((ulong)lcdbase, &dispc->gfx_ba0); /* frame buffer address */
+	writel((ulong)lcdbase, &dispc->gfx_ba1); /* frame buffer address */
+	writel(lcd_cfg.lcd_size, &dispc->gfx_size); /* size - same as LCD */
+#if 1
+	writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
+#else
+	writel((1<<0)|(6<<1)|(1<<5), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
+#endif
+
+	// enable the splash screen
+	static char splash_bmp_gz_str[32];
+	sprintf(splash_bmp_gz_str, "0x%08X", (unsigned int)splash_bmp_gz);
+	setenv("splashimage", splash_bmp_gz_str);
+}
+
+void lcd_enable(void)
+{
+	int status;
+
+	lcd_is_enabled = 0; /* keep console messages on the serial port */
+
+	omap3_dss_enable();
+
+	/*
+	 * panel_enable = 155
+	 * backlight 154 (torpedo); 8 (som)
+	 */
+	 
+	/* turn on LCD_PANEL_PWR */
+	if (!omap_request_gpio(155)) {
+		omap_set_gpio_direction(155, 0);
+		omap_set_gpio_dataout(155, 1);
+	} else
+		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
+
+#if 1
+	/* turn on LCD_BACKLIGHT_PWR SOM LV */
+	if (!omap_request_gpio(8)) {
+		omap_set_gpio_direction(8, 0);
+		omap_set_gpio_dataout(8, 1);
+	} else
+		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
+#else
+	/* turn on LCD_BACKLIGHT_PWR Torpedo */
+	if (!omap_request_gpio(154)) {
+		omap_set_gpio_direction(154, 0);
+		omap_set_gpio_dataout(154, 1);
+	} else
+		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
+
+#endif
+
+#if 1
+#ifdef CONFIG_TWL4030_PWM
+	twl4030_set_pwm0(70, 100); /* 70% backlight brighntess */
+#else
+	/* SOM PWM0 output is GPIO.6 on TWL4030... */
+	if (!twl4030_request_gpio(6)) {
+		status = twl4030_set_gpio_direction(6, 0);
+		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
+		status = twl4030_set_gpio_dataout(6, 1);
+		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
+	} else
+		printf("%s:%d - failed to get twl4030_gpio!\n", __FUNCTION__, __LINE__);
+#endif
+#else
+	/* set LCD_PWM0 to full brightness */
+	if (!omap_request_gpio(56)) {
+		omap_set_gpio_direction(56, 0);
+		omap_set_gpio_dataout(56, 1);
+	} else
+		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
+
+#endif
+}
+
+
 /*
  * Routine: misc_init_r
  * Description: Init ethernet (done here so udelay works)
@@ -581,6 +703,35 @@ U_BOOT_CMD(mux_config, 1, 1, do_dump_mux_config,
 );
 #endif
 
+int do_backlight(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	ulong level;
+#if 1
+	level = simple_strtoul(argv[1], NULL, 10);
+	twl4030_set_pwm0(level, 100); /* Adjust PWM */
+#else
+	printf("%s: don't know how to handle Torpedo!\n", __FUNCTION__);
+#endif
+	return 0;
+}
+
+U_BOOT_CMD(backlight, 2, 1, do_backlight,
+	"backlight - change backlight level",
+	"<level>"
+);
+
+int do_dump_pwm0(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	twl4030_dump_pwm0();
+	return 0;
+}
+
+U_BOOT_CMD(dump_pwm0, 1, 1, do_dump_pwm0,
+	"dump_pwm0 - dump TWL PWM registers",
+	""
+);
+
+
 /*
  * IEN  - Input Enable
  * IDIS - Input Disable
@@ -677,7 +828,12 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(GPMC_NCS2),		(IDIS | PTU | EN  | M0)); /*GPMC_nCS2*/
 	MUX_VAL(CP(GPMC_NCS3),		(IDIS | PTD | DIS | M0)); /*GPMC_nCS3*/
 	MUX_VAL(CP(GPMC_NCS4),		(IEN  | PTU | EN  | M0)); /*GPMC_nCS4*/
+#if 1
+	/* Display GPIO */
+	MUX_VAL(CP(GPMC_NCS5),          (IDIS | PTU | DIS | M4)); /*GPIO_65 backlight */
+#else
 	MUX_VAL(CP(GPMC_NCS5),		(IDIS | PTU | EN  | M0)); /*GPMC_nCS5*/
+#endif
 	MUX_VAL(CP(GPMC_NCS6),		(IEN  | PTD | DIS | M0)); /*GPMC_nCS6*/
 	MUX_VAL(CP(GPMC_NCS7),		(IDIS | PTD | DIS | M1)); /*GPMC_IO_DIR*/
 	MUX_VAL(CP(GPMC_CLK),		(IEN  | PTD | DIS | M0)); /*GPMC_CLK*/
@@ -758,34 +914,6 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(MCBSP2_DR),		(IEN  | PTD | EN  | M7)); /*McBSP2_DR*/
 	MUX_VAL(CP(MCBSP2_DX),		(IEN  | PTD | EN  | M7)); /*McBSP2_DX*/
 #else
-	MUX_VAL(CP(DSS_PCLK),		(IDIS | PTD | EN  | M0)); /*DSS_PCLK*/
-	MUX_VAL(CP(DSS_HSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_HSYNC*/
-	MUX_VAL(CP(DSS_VSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_VSYNC*/
-	MUX_VAL(CP(DSS_ACBIAS),		(IDIS | PTD | EN  | M0)); /*DSS_ACBIAS*/
-	MUX_VAL(CP(DSS_DATA0),		(IDIS | PTD | EN  | M0)); /*DSS_DATA0*/
-	MUX_VAL(CP(DSS_DATA1),		(IDIS | PTD | EN  | M0)); /*DSS_DATA1*/
-	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | EN  | M0)); /*DSS_DATA2*/
-	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | EN  | M0)); /*DSS_DATA3*/
-	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | EN  | M0)); /*DSS_DATA4*/
-	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | EN  | M0)); /*DSS_DATA5*/
-	MUX_VAL(CP(DSS_DATA6),		(IDIS | PTD | EN  | M0)); /*DSS_DATA6*/
-	MUX_VAL(CP(DSS_DATA7),		(IDIS | PTD | EN  | M0)); /*DSS_DATA7*/
-	MUX_VAL(CP(DSS_DATA8),		(IDIS | PTD | EN  | M0)); /*DSS_DATA8*/
-	MUX_VAL(CP(DSS_DATA9),		(IDIS | PTD | EN  | M0)); /*DSS_DATA9*/
-	MUX_VAL(CP(DSS_DATA10),		(IDIS | PTD | EN  | M0)); /*DSS_DATA10*/
-	MUX_VAL(CP(DSS_DATA11),		(IDIS | PTD | EN  | M0)); /*DSS_DATA11*/
-	MUX_VAL(CP(DSS_DATA12),		(IDIS | PTD | EN  | M0)); /*DSS_DATA12*/
-	MUX_VAL(CP(DSS_DATA13),		(IDIS | PTD | EN  | M0)); /*DSS_DATA13*/
-	MUX_VAL(CP(DSS_DATA14),		(IDIS | PTD | EN  | M0)); /*DSS_DATA14*/
-	MUX_VAL(CP(DSS_DATA15),		(IDIS | PTD | EN  | M0)); /*DSS_DATA15*/
-	MUX_VAL(CP(DSS_DATA16),		(IDIS | PTD | EN  | M0)); /*DSS_DATA16*/
-	MUX_VAL(CP(DSS_DATA17),		(IDIS | PTD | EN  | M0)); /*DSS_DATA17*/
-	MUX_VAL(CP(DSS_DATA18),		(IDIS | PTD | EN  | M0)); /*DSS_DATA18*/
-	MUX_VAL(CP(DSS_DATA19),		(IDIS | PTD | EN  | M0)); /*DSS_DATA19*/
-	MUX_VAL(CP(DSS_DATA20),		(IDIS | PTD | EN  | M0)); /*DSS_DATA20*/
-	MUX_VAL(CP(DSS_DATA21),		(IDIS | PTD | EN  | M0)); /*DSS_DATA21*/
-	MUX_VAL(CP(DSS_DATA22),		(IDIS | PTD | EN  | M0)); /*DSS_DATA22*/
-	MUX_VAL(CP(DSS_DATA23),		(IDIS | PTD | EN  | M0)); /*DSS_DATA23*/
  /*CAMERA*/
 	MUX_VAL(CP(CAM_HS),		(IEN  | PTD | EN  | M0)); /*CAM_HS */
 	MUX_VAL(CP(CAM_VS),		(IEN  | PTD | EN  | M0)); /*CAM_VS */
@@ -818,6 +946,90 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(MCBSP2_DR),		(IEN  | PTD | EN  | M0)); /*McBSP2_DR*/
 	MUX_VAL(CP(MCBSP2_DX),		(IDIS | PTD | EN  | M0)); /*McBSP2_DX*/
 #endif
+
+	MUX_VAL(CP(DSS_PCLK),		(IDIS | PTD | EN  | M0)); /*DSS_PCLK*/
+	MUX_VAL(CP(DSS_HSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_HSYNC*/
+	MUX_VAL(CP(DSS_VSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_VSYNC*/
+	MUX_VAL(CP(DSS_ACBIAS),		(IDIS | PTD | EN  | M0)); /*DSS_ACBIAS*/
+#if 1
+ /*DSS - with DATA18-23 muxed as DATA0-5 */
+	MUX_VAL(CP(DSS_PCLK),		(IDIS | PTD | EN  | M0)); /*DSS_PCLK*/
+	MUX_VAL(CP(DSS_HSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_HSYNC*/
+	MUX_VAL(CP(DSS_VSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_VSYNC*/
+	MUX_VAL(CP(DSS_ACBIAS),		(IDIS | PTD | EN  | M0)); /*DSS_ACBIAS*/
+#if 1
+	/* SOM used DATA0-5 for output */
+	MUX_VAL(CP(DSS_DATA0),		(IDIS | PTD | EN  | M0)); /*DSS_DATA0*/
+	MUX_VAL(CP(DSS_DATA1),		(IDIS | PTD | EN  | M0)); /*DSS_DATA1*/
+	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | EN  | M0)); /*DSS_DATA2*/
+	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | EN  | M0)); /*DSS_DATA3*/
+	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | EN  | M0)); /*DSS_DATA4*/
+	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | EN  | M0)); /*DSS_DATA5*/
+#else
+	/* Torpedo doesn't used DATA0-5 for output */
+	MUX_VAL(CP(DSS_DATA0),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+	MUX_VAL(CP(DSS_DATA1),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | EN  | M7)); /*SAFE*/
+#endif
+	MUX_VAL(CP(DSS_DATA6),		(IDIS | PTD | EN  | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA7),		(IDIS | PTD | EN  | M0)); /*DSS_DATA7*/
+	MUX_VAL(CP(DSS_DATA8),		(IDIS | PTD | EN  | M0)); /*DSS_DATA8*/
+	MUX_VAL(CP(DSS_DATA9),		(IDIS | PTD | EN  | M0)); /*DSS_DATA9*/
+	MUX_VAL(CP(DSS_DATA10),		(IDIS | PTD | EN  | M0)); /*DSS_DATA10*/
+	MUX_VAL(CP(DSS_DATA11),		(IDIS | PTD | EN  | M0)); /*DSS_DATA11*/
+	MUX_VAL(CP(DSS_DATA12),		(IDIS | PTD | EN  | M0)); /*DSS_DATA12*/
+	MUX_VAL(CP(DSS_DATA13),		(IDIS | PTD | EN  | M0)); /*DSS_DATA13*/
+	MUX_VAL(CP(DSS_DATA14),		(IDIS | PTD | EN  | M0)); /*DSS_DATA14*/
+	MUX_VAL(CP(DSS_DATA15),		(IDIS | PTD | EN  | M0)); /*DSS_DATA15*/
+	MUX_VAL(CP(DSS_DATA16),		(IDIS | PTD | EN  | M0)); /*DSS_DATA16*/
+	MUX_VAL(CP(DSS_DATA17),		(IDIS | PTD | EN  | M0)); /*DSS_DATA17*/
+#if 1
+	/* SOM uses DATA18-23 as they are*/
+	MUX_VAL(CP(DSS_DATA18),		(IDIS | PTD | EN  | M0)); /*DSS_DATA18*/
+	MUX_VAL(CP(DSS_DATA19),		(IDIS | PTD | EN  | M0)); /*DSS_DATA19*/
+	MUX_VAL(CP(DSS_DATA20),		(IDIS | PTD | EN  | M0)); /*DSS_DATA20*/
+	MUX_VAL(CP(DSS_DATA21),		(IDIS | PTD | EN  | M0)); /*DSS_DATA21*/
+	MUX_VAL(CP(DSS_DATA22),		(IDIS | PTD | EN  | M0)); /*DSS_DATA22*/
+	MUX_VAL(CP(DSS_DATA23),		(IDIS | PTD | EN  | M0)); /*DSS_DATA23*/
+#else
+	/* Torpedo uses DATA18-23 as DATA0-5 */
+	MUX_VAL(CP(DSS_DATA18),		(IDIS | PTD | EN  | M3)); /*DSS_DATA0*/
+	MUX_VAL(CP(DSS_DATA19),		(IDIS | PTD | EN  | M3)); /*DSS_DATA1*/
+	MUX_VAL(CP(DSS_DATA20),		(IDIS | PTD | EN  | M3)); /*DSS_DATA2*/
+	MUX_VAL(CP(DSS_DATA21),		(IDIS | PTD | EN  | M3)); /*DSS_DATA3*/
+	MUX_VAL(CP(DSS_DATA22),		(IDIS | PTD | EN  | M3)); /*DSS_DATA4*/
+	MUX_VAL(CP(DSS_DATA23),		(IDIS | PTD | EN  | M3)); /*DSS_DATA5*/
+#endif
+#else
+	MUX_VAL(CP(DSS_DATA0),		(IDIS | PTD | EN  | M0)); /*DSS_DATA0*/
+	MUX_VAL(CP(DSS_DATA1),		(IDIS | PTD | EN  | M0)); /*DSS_DATA1*/
+	MUX_VAL(CP(DSS_DATA2),		(IDIS | PTD | EN  | M0)); /*DSS_DATA2*/
+	MUX_VAL(CP(DSS_DATA3),		(IDIS | PTD | EN  | M0)); /*DSS_DATA3*/
+	MUX_VAL(CP(DSS_DATA4),		(IDIS | PTD | EN  | M0)); /*DSS_DATA4*/
+	MUX_VAL(CP(DSS_DATA5),		(IDIS | PTD | EN  | M0)); /*DSS_DATA5*/
+	MUX_VAL(CP(DSS_DATA6),		(IDIS | PTD | EN  | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA7),		(IDIS | PTD | EN  | M0)); /*DSS_DATA7*/
+	MUX_VAL(CP(DSS_DATA8),		(IDIS | PTD | EN  | M0)); /*DSS_DATA8*/
+	MUX_VAL(CP(DSS_DATA9),		(IDIS | PTD | EN  | M0)); /*DSS_DATA9*/
+	MUX_VAL(CP(DSS_DATA10),		(IDIS | PTD | EN  | M0)); /*DSS_DATA10*/
+	MUX_VAL(CP(DSS_DATA11),		(IDIS | PTD | EN  | M0)); /*DSS_DATA11*/
+	MUX_VAL(CP(DSS_DATA12),		(IDIS | PTD | EN  | M0)); /*DSS_DATA12*/
+	MUX_VAL(CP(DSS_DATA13),		(IDIS | PTD | EN  | M0)); /*DSS_DATA13*/
+	MUX_VAL(CP(DSS_DATA14),		(IDIS | PTD | EN  | M0)); /*DSS_DATA14*/
+	MUX_VAL(CP(DSS_DATA15),		(IDIS | PTD | EN  | M0)); /*DSS_DATA15*/
+	MUX_VAL(CP(DSS_DATA16),		(IDIS | PTD | EN  | M0)); /*DSS_DATA16*/
+	MUX_VAL(CP(DSS_DATA17),		(IDIS | PTD | EN  | M0)); /*DSS_DATA17*/
+	MUX_VAL(CP(DSS_DATA18),		(IDIS | PTD | EN  | M0)); /*DSS_DATA18*/
+	MUX_VAL(CP(DSS_DATA19),		(IDIS | PTD | EN  | M0)); /*DSS_DATA19*/
+	MUX_VAL(CP(DSS_DATA20),		(IDIS | PTD | EN  | M0)); /*DSS_DATA20*/
+	MUX_VAL(CP(DSS_DATA21),		(IDIS | PTD | EN  | M0)); /*DSS_DATA21*/
+	MUX_VAL(CP(DSS_DATA22),		(IDIS | PTD | EN  | M0)); /*DSS_DATA22*/
+	MUX_VAL(CP(DSS_DATA23),		(IDIS | PTD | EN  | M0)); /*DSS_DATA23*/
+#endif
+
  /*Expansion card  */
 	MUX_VAL(CP(MMC1_CLK),		(IDIS | PTU | EN  | M0)); /*MMC1_CLK*/
 	MUX_VAL(CP(MMC1_CMD),		(IEN  | PTU | EN  | M0)); /*MMC1_CMD*/
@@ -886,10 +1098,21 @@ void set_muxconf_regs(void)
 								 /* - LCD_INI*/
 	MUX_VAL(CP(MCBSP4_DR),		(IEN  | PTD | EN  | M7)); /*GPIO_153*/
 								 /* - LCD_ENVDD */
+#if 1
+#if 1
+	/* SOM doesn't use GPIO_154 for backlight pwr */
+	MUX_VAL(CP(MCBSP4_DX),		(IDIS | PTD | EN  | M7)); /*GPIO_154*/
+#else
+	MUX_VAL(CP(MCBSP4_DX),		(IDIS | PTD | EN  | M4)); /*GPIO_154*/
+#endif
+	MUX_VAL(CP(MCBSP4_FSX),		(IDIS | PTD | EN  | M4)); /*GPIO_155*/
+#else
 	MUX_VAL(CP(MCBSP4_DX),		(IEN  | PTD | EN  | M7)); /*GPIO_154*/
 								 /* - LCD_QVGA/nVGA */
 	MUX_VAL(CP(MCBSP4_FSX),		(IEN  | PTD | EN  | M7)); /*GPIO_155*/
 								 /* - LCD_RESB */
+#endif
+
 	MUX_VAL(CP(MCBSP1_CLKR),	(IEN  | PTD | EN  | M7)); /*MCBSP1_CLKR  */
 	MUX_VAL(CP(MCBSP1_FSR),		(IEN  | PTD | EN  | M7)); /*MCBSP1_FSR*/
 	MUX_VAL(CP(MCBSP1_DX),		(IEN  | PTD | EN  | M7)); /*MCBSP1_DX*/
@@ -1011,7 +1234,11 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(SYS_BOOT3),		(IEN  | PTD | EN  | M7)); /*GPIO_5*/
 	MUX_VAL(CP(SYS_BOOT4),		(IEN  | PTD | EN  | M7)); /*GPIO_6*/
 	MUX_VAL(CP(SYS_BOOT5),		(IEN  | PTD | EN  | M7)); /*GPIO_7*/
+#if 1
+	MUX_VAL(CP(SYS_BOOT6),		(IDIS | PTU | DIS | M4)); /*SOM BACKLIGHT PWR*/
+#else
 	MUX_VAL(CP(SYS_BOOT6),		(IDIS | PTD | EN  | M7)); /*GPIO_8*/
+#endif
 #else
 	MUX_VAL(CP(SYS_BOOT0),		(IEN  | PTD | DIS | M4)); /*GPIO_2*/
 								 /* - PEN_IRQ */

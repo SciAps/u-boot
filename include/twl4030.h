@@ -482,6 +482,58 @@
 #define TWL4030_USB_PHY_CLK_CTRL_STS			0xFF
 
 /*
+ * GPIO Block Register offsets (use TWL4030_CHIP_GPIO)
+ */
+
+#define REG_GPIODATAIN1			0x0
+#define REG_GPIODATAIN2			0x1
+#define REG_GPIODATAIN3			0x2
+#define REG_GPIODATADIR1		0x3
+#define REG_GPIODATADIR2		0x4
+#define REG_GPIODATADIR3		0x5
+#define REG_GPIODATAOUT1		0x6
+#define REG_GPIODATAOUT2		0x7
+#define REG_GPIODATAOUT3		0x8
+#define REG_CLEARGPIODATAOUT1		0x9
+#define REG_CLEARGPIODATAOUT2		0xA
+#define REG_CLEARGPIODATAOUT3		0xB
+#define REG_SETGPIODATAOUT1		0xC
+#define REG_SETGPIODATAOUT2		0xD
+#define REG_SETGPIODATAOUT3		0xE
+#define REG_GPIO_DEBEN1			0xF
+#define REG_GPIO_DEBEN2			0x10
+#define REG_GPIO_DEBEN3			0x11
+#define REG_GPIO_CTRL			0x12
+#define REG_GPIOPUPDCTR1		0x13
+#define REG_GPIOPUPDCTR2		0x14
+#define REG_GPIOPUPDCTR3		0x15
+#define REG_GPIOPUPDCTR4		0x16
+#define REG_GPIOPUPDCTR5		0x17
+#define REG_GPIO_ISR1A			0x19
+#define REG_GPIO_ISR2A			0x1A
+#define REG_GPIO_ISR3A			0x1B
+#define REG_GPIO_IMR1A			0x1C
+#define REG_GPIO_IMR2A			0x1D
+#define REG_GPIO_IMR3A			0x1E
+#define REG_GPIO_ISR1B			0x1F
+#define REG_GPIO_ISR2B			0x20
+#define REG_GPIO_ISR3B			0x21
+#define REG_GPIO_IMR1B			0x22
+#define REG_GPIO_IMR2B			0x23
+#define REG_GPIO_IMR3B			0x24
+#define REG_GPIO_EDR1			0x28
+#define REG_GPIO_EDR2			0x29
+#define REG_GPIO_EDR3			0x2A
+#define REG_GPIO_EDR4			0x2B
+#define REG_GPIO_EDR5			0x2C
+#define REG_GPIO_SIH_CTRL		0x2D
+
+/* Up to 18 signals are available as GPIOs, when their
+ * pins are not assigned to another use (such as ULPI/USB).
+ */
+#define TWL4030_GPIO_MAX		18
+
+/*
  * Convience functions to read and write from TWL4030
  *
  * chip_no is the i2c address, it must be one of the chip addresses
@@ -528,5 +580,20 @@ void twl4030_led_init(unsigned char ledon_mask);
  * USB
  */
 int twl4030_usb_ulpi_init(void);
+
+/*
+ * GPIO
+ */
+extern int twl4030_set_gpio_direction(unsigned int gpio, unsigned int is_input);
+extern int twl4030_set_gpio_dataout(unsigned int gpio, unsigned int enable);
+extern int twl4030_get_gpio_datain(unsigned int gpio);
+extern int twl4030_request_gpio(unsigned int gpio);
+extern void twl4030_free_gpio(unsigned int gpio);
+
+/*
+ * PWM
+ */
+extern int twl4030_set_pwm0(int level, int max_brightness);
+extern void twl4030_dump_pwm0(void);
 
 #endif /* TWL4030_H */
