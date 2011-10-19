@@ -25,7 +25,7 @@
 
 const omap3_sysinfo sysinfo = {
 	DDR_DISCRETE,
-	"OMAP3 EVM board",
+	"Logic DM37x/OMAP35x reference board",
 #if defined(CONFIG_ENV_IS_IN_ONENAND)
 	"OneNAND",
 #else
