@@ -335,6 +335,9 @@ int drv_lcd_init (void)
 
 	lcd_init (lcd_base);		/* LCD initialization */
 
+	/* lcd_init may setup panel_info structure */
+	lcd_line_length = (panel_info.vl_col * NBITS (panel_info.vl_bpix)) / 8;
+
 	/* Device initialization */
 	memset (&lcddev, 0, sizeof (lcddev));
 
@@ -435,6 +438,15 @@ static int lcd_init (void *lcdbase)
  *
  * Note that this is running from ROM, so no write access to global data.
  */
+#ifdef CONFIG_BOARD_LCD_SETMEM
+ulong lcd_setmem (ulong addr)
+{
+	ulong size;
+	size = board_lcd_setmem(addr);
+	addr -= size;
+	return addr;
+}
+#else
 ulong lcd_setmem (ulong addr)
 {
 	ulong size;
@@ -455,6 +467,7 @@ ulong lcd_setmem (ulong addr)
 
 	return (addr);
 }
+#endif
 
 /*----------------------------------------------------------------------*/
 

@@ -516,4 +516,7 @@
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (2 << 20)
 #define CONFIG_SPLASH_SCREEN
 
+/* Have board_set_lcdmem() function */
+#define CONFIG_BOARD_LCD_SETMEM
+
 #endif /* __CONFIG_H */

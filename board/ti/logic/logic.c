@@ -36,14 +36,11 @@
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/dss.h>
 #include <i2c.h>
-#include <lcd.h>
-#include <twl4030.h>
 #include <asm/mach-types.h>
 #include "logic.h"
 #include "product_id.h"
-#include "splash-480x272.h"
+#include "logic-proto.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -154,12 +151,14 @@ void nand_switch_ecc_method(int method)
  */
 void touchup_env(void)
 {
+	printf("%s:%d\n", __FUNCTION__, __LINE__);
 	if (omap3logic_nand_default == OMAP_ECC_CHIP)
 		setenv("defaultecc", "chip");
 	else if (omap3logic_nand_default == OMAP_ECC_HW)
 		setenv("defaultecc", "hw");
 	else
 		printf("%s: bad NAND ECC default %d!\n", __FUNCTION__, omap3logic_nand_default);
+	touchup_display_env();
 }
 
 /*
@@ -290,121 +289,6 @@ static void check_sysconfig_regs(void)
 	}
 }
 
-/* LCD-required members */
-int lcd_line_length;  /* initialized in lcd.c */
-int lcd_color_fg = 0xFFFF;
-int lcd_color_bg = 0x0000;
-void *lcd_base;                  /* initialized in lcd.c */
-void *lcd_console_address;       /* where is this initialized? */
-short console_col = 0;
-short console_row = 0;
-vidinfo_t panel_info = {
-	.vl_col = 480,
-	.vl_row = 272,
-	.vl_bpix = LCD_COLOR16,
-};
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue) {}
-ulong calc_fbsize(void) { return 480*272*2; }
-
-/*
- * Timings for LCD Display
- */
-static const struct panel_config lcd_cfg = {
-	/* Timing for the 4.3" display */
-	.timing_h	= 0x00100229, /* DISPC_TIMING_H */
-	.timing_v	= 0x0030020a, /* DISPC_TIMING_V */
-	.pol_freq	= 0x0003b000, /* DISPC_POL_FREQ */
-	.divisor	= 0x0001000b, /* DISPC_DIVISOR */
-	.lcd_size	= 0x010f01df, /* DISPC_SIZE_LCD */
-	.panel_type	= 0x01, /* Active Matrix TFT */
-	.data_lines	= 0x01, /* 1=RGB16, 2=RGB18, 3=RGB24 */
-	.load_mode	= 0x02, /* Frame Mode */
-	.panel_color	= 0x00000000, /* black */
-};
-
-void lcd_ctrl_init(void *lcdbase)
-{
-	struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
-
-	printf("%s: lcdbase %p\n", __FUNCTION__, lcdbase);
-
-	/* configure DSS for single graphics layer */
-	omap3_dss_panel_config(&lcd_cfg);
-	writel((ulong)lcdbase, &dispc->gfx_ba0); /* frame buffer address */
-	writel((ulong)lcdbase, &dispc->gfx_ba1); /* frame buffer address */
-	writel(lcd_cfg.lcd_size, &dispc->gfx_size); /* size - same as LCD */
-#if 1
-	writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
-#else
-	writel((1<<0)|(6<<1)|(1<<5), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
-#endif
-
-	// enable the splash screen
-	static char splash_bmp_gz_str[32];
-	sprintf(splash_bmp_gz_str, "0x%08X", (unsigned int)splash_bmp_gz);
-	setenv("splashimage", splash_bmp_gz_str);
-}
-
-void lcd_enable(void)
-{
-	int status;
-
-	lcd_is_enabled = 0; /* keep console messages on the serial port */
-
-	omap3_dss_enable();
-
-	/*
-	 * panel_enable = 155
-	 * backlight 154 (torpedo); 8 (som)
-	 */
-	 
-	/* turn on LCD_PANEL_PWR */
-	if (!omap_request_gpio(155)) {
-		omap_set_gpio_direction(155, 0);
-		omap_set_gpio_dataout(155, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-
-#if 1
-	/* turn on LCD_BACKLIGHT_PWR SOM LV */
-	if (!omap_request_gpio(8)) {
-		omap_set_gpio_direction(8, 0);
-		omap_set_gpio_dataout(8, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-#else
-	/* turn on LCD_BACKLIGHT_PWR Torpedo */
-	if (!omap_request_gpio(154)) {
-		omap_set_gpio_direction(154, 0);
-		omap_set_gpio_dataout(154, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-
-#endif
-
-#if 1
-#ifdef CONFIG_TWL4030_PWM
-	twl4030_set_pwm0(70, 100); /* 70% backlight brighntess */
-#else
-	/* SOM PWM0 output is GPIO.6 on TWL4030... */
-	if (!twl4030_request_gpio(6)) {
-		status = twl4030_set_gpio_direction(6, 0);
-		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
-		status = twl4030_set_gpio_dataout(6, 1);
-		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
-	} else
-		printf("%s:%d - failed to get twl4030_gpio!\n", __FUNCTION__, __LINE__);
-#endif
-#else
-	/* set LCD_PWM0 to full brightness */
-	if (!omap_request_gpio(56)) {
-		omap_set_gpio_direction(56, 0);
-		omap_set_gpio_dataout(56, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-
-#endif
-}
 
 
 /*
@@ -703,33 +587,6 @@ U_BOOT_CMD(mux_config, 1, 1, do_dump_mux_config,
 );
 #endif
 
-int do_backlight(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
-{
-	ulong level;
-#if 1
-	level = simple_strtoul(argv[1], NULL, 10);
-	twl4030_set_pwm0(level, 100); /* Adjust PWM */
-#else
-	printf("%s: don't know how to handle Torpedo!\n", __FUNCTION__);
-#endif
-	return 0;
-}
-
-U_BOOT_CMD(backlight, 2, 1, do_backlight,
-	"backlight - change backlight level",
-	"<level>"
-);
-
-int do_dump_pwm0(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
-{
-	twl4030_dump_pwm0();
-	return 0;
-}
-
-U_BOOT_CMD(dump_pwm0, 1, 1, do_dump_pwm0,
-	"dump_pwm0 - dump TWL PWM registers",
-	""
-);
 
 
 /*
