@@ -103,3 +103,30 @@ void twl4030_power_mmc_init(void)
 				TWL4030_PM_RECEIVER_VMMC1_DEV_GRP,
 				TWL4030_PM_RECEIVER_DEV_GRP_P1);
 }
+
+void twl4030_power_off(void)
+{
+	u8 val = 0;
+	if (twl4030_i2c_read_u8(TWL4030_CHIP_PM_MASTER, &val,
+				TWL4030_PM_MASTER_P1_SW_EVENTS)) {
+		printf("Error:TWL4030: failed to read the power register\n");
+	} else {
+		val |= TWL4030_PM_MASTER_SW_EVENTS_DEVOFF;
+		if (twl4030_i2c_write_u8(TWL4030_CHIP_PM_MASTER, val,
+					 TWL4030_PM_MASTER_P1_SW_EVENTS)) {
+			printf("Error:TWL4030: failed to write the power register\n");
+			printf("Could not power off\n");
+		}
+	}
+}
+
+int do_poweroff(char *var, int maxv, char *cmdv[], int bufsz, char *buf)
+{
+	printf("Power down.\n");
+	twl4030_power_off();
+}
+
+U_BOOT_CMD(poweroff, 1, 1, do_poweroff,
+	"Power down board",
+	""
+);
