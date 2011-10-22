@@ -39,10 +39,14 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
+	.rodata : {
+		__rodata_start = .;
+		 *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
+	}
 
 	. = ALIGN(4);
 	.data : {
+		__data_start = .;
 		*(.data)
 	}
 

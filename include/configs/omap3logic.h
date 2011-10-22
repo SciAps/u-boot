@@ -76,6 +76,12 @@
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (6 << 20))
 
 /*
+ * Add GDB information (section starts) into bdinfo; used in gdb
+ * "add-symbol-file" to specify start of .data, .bss, .rodata sections
+ */
+#define CONFIG_GDB_SECTION_STARTS
+
+/*
  * Hardware drivers
  */
 

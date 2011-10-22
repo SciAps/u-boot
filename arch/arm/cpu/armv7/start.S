@@ -97,6 +97,16 @@ _bss_end_ofs:
 _end_ofs:
 	.word _end - _start
 
+#ifdef CONFIG_GDB_SECTION_STARTS
+.globl _data_start_ofs
+_data_start_ofs:
+	.word __data_start - _start
+
+.globl _rodata_start_ofs
+_rodata_start_ofs:
+	.word __rodata_start - _start
+#endif
+	
 #ifdef CONFIG_USE_IRQ
 /* IRQ stack memory (calculated at run-time) */
 .globl IRQ_STACK_START

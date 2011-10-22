@@ -64,6 +64,17 @@ typedef	struct	global_data {
 #ifdef CONFIG_IXP425
 	unsigned long	timestamp;
 #endif
+#ifdef CONFIG_GDB_SECTION_STARTS
+	/* Section start information. Used with GDB command:
+	 * add-symbol-file u-boot $relocaddr \
+	 * 	-s .data $data_start \
+	 *	-s .bss $bss_start \
+	 *	-s .rodata $rodata_start
+	 */
+	unsigned long	bss_start;
+	unsigned long	data_start;
+	unsigned long	rodata_start;
+#endif
 	unsigned long	relocaddr;	/* Start address of U-Boot in RAM */
 	phys_size_t	ram_size;	/* RAM size */
 	unsigned long	mon_len;	/* monitor len */

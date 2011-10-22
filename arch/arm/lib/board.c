@@ -414,6 +414,11 @@ void board_init_f (ulong bootflag)
 	gd->relocaddr = addr;
 	gd->start_addr_sp = addr_sp;
 	gd->reloc_off = addr - _TEXT_BASE;
+#ifdef CONFIG_GDB_SECTION_STARTS
+	gd->bss_start = addr + _bss_start_ofs;
+	gd->data_start = addr + _data_start_ofs;
+	gd->rodata_start = addr + _rodata_start_ofs;
+#endif
 	debug ("relocation Offset is: %08lx\n", gd->reloc_off);
 	memcpy (id, (void *)gd, sizeof (gd_t));
 

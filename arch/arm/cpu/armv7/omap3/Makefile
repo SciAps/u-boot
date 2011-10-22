@@ -37,7 +37,7 @@ COBJS	+= sys_info.o
 COBJS-$(CONFIG_EMIF4)	+= emif4.o
 COBJS-$(CONFIG_SDRC)	+= sdrc.o
 
-SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
+SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c) $(COBJS-y:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS) $(COBJS-y) $(SOBJS))
 
 all:	 $(obj).depend $(LIB)

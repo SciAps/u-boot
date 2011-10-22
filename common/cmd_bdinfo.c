@@ -350,6 +350,11 @@ int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 	print_num("relocaddr", gd->relocaddr);
 	print_num("reloc off", gd->reloc_off);
+#ifdef CONFIG_GDB_SECTION_STARTS
+	print_num("data_start", gd->data_start);
+	print_num("rodata_start", gd->rodata_start);
+	print_num("bss_start", gd->bss_start);
+#endif
 	print_num("irq_sp", gd->irq_sp);	/* irq stack pointer */
 	print_num("sp start ", gd->start_addr_sp);
 	print_num("FB base  ", gd->fb_base);

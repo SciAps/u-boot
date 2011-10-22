@@ -33,6 +33,10 @@
 extern ulong _bss_start_ofs;	/* BSS start relative to _start */
 extern ulong _bss_end_ofs;		/* BSS end relative to _start */
 extern ulong _end_ofs;		/* end of image relative to _start */
+#ifdef CONFIG_GDB_SECTION_STARTS
+extern ulong _data_start_ofs;	/* .data start relative to _start */
+extern ulong _rodata_start_ofs;	/* .rodata start relative to _start */
+#endif
 extern ulong IRQ_STACK_START;	/* top of IRQ stack */
 extern ulong FIQ_STACK_START;	/* top of FIQ stack */
 extern ulong _TEXT_BASE;	/* code start */
