@@ -244,6 +244,9 @@ void env_relocate (void)
 	} else {
 		env_relocate_spec ();
 	}
+#ifdef CONFIG_TOUCHUP_ENV
+	touchup_env();
+#endif
 }
 
 #ifdef CONFIG_AUTO_COMPLETE

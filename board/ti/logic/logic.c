@@ -316,8 +316,6 @@ int misc_init_r(void)
 
 	check_sysconfig_regs();
 
-	touchup_env();
-
 	return 0;
 }
 

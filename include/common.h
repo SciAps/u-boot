@@ -732,7 +732,7 @@ int	pcmcia_init (void);
  */
 void show_boot_progress(int val);
 #ifdef CONFIG_BOARD_LCD_SETMEM
-void board_custom_lcd_setmem (ulong addr);
+ulong board_lcd_setmem (ulong addr);
 #endif
 
 /* Multicore arch functions */

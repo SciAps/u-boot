@@ -35,6 +35,7 @@
 #include <stdarg.h>
 #include <linux/types.h>
 #include <stdio_dev.h>
+#include <malloc.h>
 #if defined(CONFIG_POST)
 #include <post.h>
 #endif
@@ -139,12 +140,9 @@ static inline void console_newline (void)
 
 /*----------------------------------------------------------------------*/
 
-void lcd_putc (const char c)
+void _lcd_putc (const char c)
 {
-	if (!lcd_is_enabled) {
-		serial_putc(c);
-		return;
-	}
+	int i;
 
 	switch (c) {
 	case '\r':	console_col = 0;
@@ -165,6 +163,13 @@ void lcd_putc (const char c)
 	case '\b':	console_back();
 			return;
 
+	case '\f':	/* Clear to EOL */
+			for (i=console_col; i < CONSOLE_COLS; ++i)
+				lcd_putc_xy (i * VIDEO_FONT_WIDTH,
+					     console_row * VIDEO_FONT_HEIGHT,
+					     ' ');
+			return;
+
 	default:	lcd_putc_xy (console_col * VIDEO_FONT_WIDTH,
 				     console_row * VIDEO_FONT_HEIGHT,
 				     c);
@@ -174,6 +179,15 @@ void lcd_putc (const char c)
 			return;
 	}
 	/* NOTREACHED */
+}
+
+void lcd_putc (const char c)
+{
+	if (!lcd_is_enabled) {
+		serial_putc(c);
+		return;
+	}
+	_lcd_putc(c);
 }
 
 /*----------------------------------------------------------------------*/
@@ -203,6 +217,126 @@ void lcd_printf(const char *fmt, ...)
 
 	lcd_puts(buf);
 }
+
+int anchor_row, anchor_col;
+
+int do_echo_lcd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	int i;
+	int row,col;
+	int tmp;
+	char *s, *r;
+
+	for (i = 1; i < argc; i++) {
+		char *p = argv[i], c;
+
+		{
+			int j;
+			for (j=0; argv[i][j]; ++j)
+				printf("%02x ", argv[i][j]);
+			printf("\n");
+		}
+
+		if (i > 1)
+			_lcd_putc(' ');
+
+		while ((c = *p++) != '\0') {
+			if (c == '/' && *p) {
+				switch(*p) {
+				case 'g':
+					/* Goto the anchor point */
+					console_row = anchor_row;
+					console_col = anchor_col;
+					break;
+				case 'a':
+					/* Set the anchor to current point */
+					anchor_row = console_row;
+					anchor_col = console_col;
+					break;
+				case 'A':
+					/* Goto the lcd_anchor in environment */
+					s = getenv("lcd_anchor");
+					row = simple_strtoul(s, &r, 0);
+					if (r && *r==',') {
+						col = simple_strtoul(r+1, &r, 0);
+						if (r && !*r) {
+							if (row >= CONSOLE_ROWS)
+								row = CONSOLE_ROWS - 1;
+							if (row >= CONSOLE_COLS)
+								row = CONSOLE_COLS - 1;
+							console_row = row;
+							console_col = col;
+						}
+					}
+					break;
+				case 'p':
+					/* Cursor position, pos+'A' */
+					if (p[1] && p[2]) {
+						console_row = p[1]-'A';
+						console_col = p[2]-'A';
+						p+=2;
+					} else {
+						_lcd_putc('\\');
+						_lcd_putc(*p);
+					}
+					break;
+				case 'i':
+					/* Invert video */
+					tmp = lcd_color_fg;
+					lcd_color_fg = lcd_color_bg;
+					lcd_color_bg = tmp;
+					break;
+				case 'b':
+					/* Back up the display */
+					_lcd_putc('\b');
+					break;
+				case 'r':
+					/* Carriage return */
+					_lcd_putc('\r');
+					break;
+				case 'n':
+					/* Line feed */
+					_lcd_putc('\n');
+					break;
+				case 'k':
+					/* Clear to end of line */
+					_lcd_putc('\f');
+					break;
+				default:
+					_lcd_putc('\\');
+					_lcd_putc(*p);
+					break;
+				}
+				p++;
+			} else {
+				_lcd_putc(c);
+			}
+		}
+	}
+
+#ifdef CONFIG_ARM
+	/* Flush the cache to make sure display tracks content of memory */
+	flush_cache(0, ~0);
+#endif
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	echo_lcd,	CONFIG_SYS_MAXARGS,	1,	do_echo_lcd,
+	"echo args to LCD",
+	"[args..]\n"
+	"    - echo args to LCD, following escape sequences:\n"
+"      /pRC - goto row 'R' ('A'+row), column 'C' ('A'+col)\n"
+"      /a - save the current position as anchor point\n"
+"      /g - set cursor position to anchor point\n"
+"      /i - invert video colors\n"
+"      /b - backspace\n"
+"      /n - linefeed\n"
+"      /r - carriage_return"
+"      /k - clear to end of line"
+"      /A - goto lcd_anchor value in environment (R,C in decimal)\n"
+);
 
 /************************************************************************/
 /* ** Low-Level Graphics Routines					*/
@@ -408,10 +542,17 @@ U_BOOT_CMD(
 
 static int lcd_init (void *lcdbase)
 {
+	int ret;
+
 	/* Initialize the lcd controller */
 	debug ("[LCD] Initializing LCD frambuffer at %p\n", lcdbase);
 
 	lcd_ctrl_init (lcdbase);
+
+	/* If no panel setup then return an error */
+	if (!panel_info.vl_row || !panel_info.vl_col)
+		return -1;
+
 	lcd_is_enabled = 1;
 	lcd_clear (NULL, 1, 1, NULL);	/* dummy args */
 	lcd_enable ();
@@ -621,7 +762,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	ushort *cmap_base = NULL;
 	ushort i, j;
 	uchar *fb;
-	bmp_image_t *bmp=(bmp_image_t *)bmp_image;
+	bmp_image_t *bmp;
 	uchar *bmap;
 	ushort padded_line;
 	unsigned long width, height, byte_width;
@@ -634,6 +775,10 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 	volatile immap_t *immr = (immap_t *) CONFIG_SYS_IMMR;
 	volatile cpm8xx_t *cp = &(immr->im_cpm);
 #endif
+
+	if (!bmp_image)
+		return 1;
+	bmp = (bmp_image_t *)bmp_image;
 
 	if (!((bmp->header.signature[0]=='B') &&
 		(bmp->header.signature[1]=='M'))) {
@@ -809,6 +954,7 @@ static void *lcd_logo (void)
 	char *s;
 	ulong addr;
 	static int do_splash = 1;
+	int ret;
 
 	if (do_splash && (s = getenv("splashimage")) != NULL) {
 		int x = 0, y = 0;
@@ -841,7 +987,12 @@ static void *lcd_logo (void)
 		}
 #endif
 
-		if (lcd_display_bitmap (addr, x, y) == 0) {
+		ret = lcd_display_bitmap (addr, x, y);
+#ifdef CONFIG_VIDEO_BMP_GZIP
+		if ((unsigned long)bmp != addr)
+			free((void *)addr);
+#endif
+		if (ret == 0) {
 			return ((void *)lcd_base);
 		}
 	}

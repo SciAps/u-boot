@@ -111,6 +111,7 @@ static struct logic_screen *find_screen(void)
 		printf("%s:%d lcd_line_length %d\n", __FUNCTION__, __LINE__, lcd_line_length);
 		return default_screen;
 	}
+	printf("display='%s' does not describe a valid screen!\n", screen);
 	return NULL;
 }
 #if 0
@@ -141,6 +142,8 @@ void touchup_display_env(void)
 {
 	// enable the splash screen
 	char splash_bmp_gz_str[12];
+
+	printf("%s\n", __FUNCTION__);
 	sprintf(splash_bmp_gz_str, "0x%08X", (unsigned int)splash_bmp_gz);
 	setenv("splashimage", splash_bmp_gz_str);
 }
@@ -153,6 +156,7 @@ void lcd_ctrl_init(void *lcdbase)
 
 	printf("%s: lcdbase %p\n", __FUNCTION__, lcdbase);
 
+	memset(&panel_info, 0, sizeof(panel_info));
 	screen = find_screen();
 	if (!screen)
 		return;
@@ -175,9 +179,6 @@ void lcd_ctrl_init(void *lcdbase)
 
 void lcd_enable(void)
 {
-#if 0
-	int status;
-#endif
 	int mSec;
 
 	lcd_is_enabled = 0; /* keep console messages on the serial port */
