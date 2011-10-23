@@ -356,6 +356,10 @@ ifeq ($(CONFIG_MMC_U_BOOT),y)
 ALL += $(obj)mmc_spl/u-boot-mmc-spl.bin
 endif
 
+ifeq ($(CONFIG_TOOL_SIGNGP),y)
+ALL += $(obj)u-boot.bin.ift
+endif
+
 all:		$(ALL)
 
 $(obj)u-boot.hex:	$(obj)u-boot
@@ -367,6 +371,9 @@ $(obj)u-boot.srec:	$(obj)u-boot
 $(obj)u-boot.bin:	$(obj)u-boot
 		$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
 		$(BOARD_SIZE_CHECK)
+
+$(obj)u-boot.bin.ift:	$(obj)u-boot.bin
+		tools/sign-nand-image u-boot.bin $(CONFIG_SYS_TEXT_BASE)
 
 $(obj)u-boot.ldr:	$(obj)u-boot
 		$(CREATE_LDR_ENV)
