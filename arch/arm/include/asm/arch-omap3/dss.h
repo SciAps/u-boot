@@ -133,6 +133,17 @@ struct venc_regs {
     u32 height_width;                         /* 0xCC */
 };
 
+enum omap_panel_config {
+	OMAP_DSS_LCD_IVS		= 1<<0,
+	OMAP_DSS_LCD_IHS		= 1<<1,
+	OMAP_DSS_LCD_IPC		= 1<<2,
+	OMAP_DSS_LCD_IEO		= 1<<3,
+	OMAP_DSS_LCD_RF			= 1<<4,
+	OMAP_DSS_LCD_ONOFF		= 1<<5,
+
+	OMAP_DSS_LCD_TFT		= 1<<20,
+};
+
 /* Few Register Offsets */
 #define FRAME_MODE_SHIFT       1
 #define TFTSTN_SHIFT           3
@@ -170,7 +181,11 @@ struct panel_config {
     u32 timing_h;
     u32 timing_v;
     u32 pol_freq;
+#if 1
+    u32 pixel_clock;
+#else
     u32 divisor;
+#endif
     u32 lcd_size;
     u32 panel_type;
     u32 data_lines;
@@ -190,5 +205,9 @@ void omap3_dss_enable(void);
 #ifdef CONFIG_DSS_DUMP
 extern void omap3_dss_dump(void);
 #endif
+
+extern int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
+				unsigned int *dispc_divisor,
+				unsigned int *result_fck_div);
 
 #endif /* DSS_H */

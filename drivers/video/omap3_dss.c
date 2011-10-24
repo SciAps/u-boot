@@ -28,6 +28,13 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/dss.h>
+#include <asm/arch/sys_proto.h>
+
+#ifdef DEBUG
+#define DSS_DBG_CLK(fmt, ...) printf(fmt, ## args)
+#else
+#define DSS_DBG_CLK(fmt, ...)
+#endif
 
 /*
  * Configure VENC for a given Mode (NTSC / PAL)
@@ -108,17 +115,189 @@ void omap3_dss_venc_config(const struct venc_regs *venc_cfg,
  */
 void omap3_dss_panel_config(const struct panel_config *panel_cfg)
 {
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
     struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
+    int ret;
+    u32 divisor, cm_clksel_dss;
+    u32 fck_div;
+
+    /* Calculate timing of DISPC_DIVISOR; LCD in 16:23, PCD in 0:7 */
+    ret = omap3_dss_calc_divisor(panel_cfg->panel_type == 1,
+			    panel_cfg->pixel_clock, &divisor, &fck_div);
+    DSS_DBG_CLK("%s: Need to program CM_CLKSEL_DSS:clksel_dss1 to %u !\n", __FUNCTION__, fck_div);
+    cm_clksel_dss = readl(&prcm_base->clksel_dss);
+    DSS_DBG_CLK("%s: &cm_clksel_dss %p val %#x\n", __FUNCTION__, &prcm_base->clksel_dss, cm_clksel_dss);
+    cm_clksel_dss &= ~0x3f;  /* clear CLKSELDSS1 */
+    cm_clksel_dss |= fck_div; /* or in new clksel_dss1 */
+    writel(cm_clksel_dss, &prcm_base->clksel_dss);
+    DSS_DBG_CLK("%s: cm_clksel_dss %#x\n", __FUNCTION__, cm_clksel_dss);
 
     writel(panel_cfg->timing_h, &dispc->timing_h);
     writel(panel_cfg->timing_v, &dispc->timing_v);
     writel(panel_cfg->pol_freq, &dispc->pol_freq);
+#if 1
+    writel(divisor, &dispc->divisor);
+#else
     writel(panel_cfg->divisor, &dispc->divisor);
+#endif
     writel(panel_cfg->lcd_size, &dispc->size_lcd);
     writel((panel_cfg->load_mode << FRAME_MODE_SHIFT), &dispc->config);
     writel(((panel_cfg->panel_type << TFTSTN_SHIFT) |
             (panel_cfg->data_lines << DATALINES_SHIFT)), &dispc->control);
     writel(panel_cfg->panel_color, &dispc->default_color0);
+}
+
+struct dss_clock_info {
+	/* rates that we get with dividers below */
+	unsigned long fck;
+
+	/* dividers */
+	u16 fck_div;
+};
+
+struct dispc_clock_info {
+	/* rates that we get with dividers below */
+	unsigned long lck;
+	unsigned long pck;
+
+	/* dividers */
+	u16 lck_div;
+	u16 pck_div;
+};
+
+static inline int abs(int x)
+{
+	if (x < 0)
+		return -x;
+	return x;
+}
+
+/* with fck as input clock rate, find dispc dividers that produce req_pck */
+void dispc_find_clk_divs(int is_tft, unsigned long req_pck, unsigned long fck,
+		struct dispc_clock_info *cinfo)
+{
+	u16 pcd_min = is_tft ? 2 : 3;
+	unsigned long best_pck;
+	u16 best_ld, cur_ld;
+	u16 best_pd, cur_pd;
+
+	best_pck = 0;
+	best_ld = 0;
+	best_pd = 0;
+
+	for (cur_ld = 1; cur_ld <= 255; ++cur_ld) {
+		unsigned long lck = fck / cur_ld;
+
+		for (cur_pd = pcd_min; cur_pd <= 255; ++cur_pd) {
+			unsigned long pck = lck / cur_pd;
+			long old_delta, new_delta;
+
+			old_delta = abs(best_pck - req_pck);
+			new_delta = abs(pck - req_pck);
+
+			if (best_pck == 0 || new_delta < old_delta) {
+				DSS_DBG_CLK("%s: cur_ld %u cur_pd %u old_delta %ld new_delta %ld\n", __FUNCTION__, cur_ld, cur_pd, old_delta, new_delta);
+
+				best_pck = pck;
+				best_ld = cur_ld;
+				best_pd = cur_pd;
+
+				DSS_DBG_CLK("%s: best_ld %u best_pd %u\n", __FUNCTION__, best_ld, best_pd);
+
+				if (pck == req_pck)
+					goto found;
+			}
+
+			if (pck < req_pck)
+				break;
+		}
+
+		if (lck / pcd_min < req_pck)
+			break;
+	}
+
+found:
+	cinfo->lck_div = best_ld;
+	cinfo->pck_div = best_pd;
+	cinfo->lck = fck / cinfo->lck_div;
+	cinfo->pck = cinfo->lck / cinfo->pck_div;
+	DSS_DBG_CLK("%s: %d best_ld %u best_pd %u\n", __FUNCTION__, __LINE__, best_ld, best_pd);
+}
+
+int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
+			unsigned int *dispc_divisor,
+			unsigned int *result_fck_div)
+{
+	unsigned long prate;
+	u16 fck_div, fck_div_max, fck_min_div = 1, fck_div_factor;
+	int min_fck_per_pck;
+	unsigned long fck, max_dss_fck = 173000; /* max DSS VP_CLK */
+	u32 cpu_family = get_cpu_family();
+	struct dispc_clock_info cur_dispc;
+	struct dss_clock_info best_dss;
+	struct dispc_clock_info best_dispc;
+
+	prate = 864000; /* Fclk of DSS (864Mhz in Khz???) */
+
+	memset(&best_dss, 0, sizeof(best_dss));
+	memset(&best_dispc, 0, sizeof(best_dispc));
+
+	min_fck_per_pck = 1;
+
+	if (cpu_family == CPU_OMAP36XX) {
+		fck_div_max = 16;
+		fck_div_factor = 2;
+	} else {
+		fck_div_max = 16;
+		fck_div_factor = 1;
+	}
+
+	for (fck_div = fck_div_max; fck_div > fck_min_div; --fck_div) {
+		DSS_DBG_CLK("%s:%d fck_div %d\n", __FUNCTION__, __LINE__, fck_div);
+#if 1
+		fck = prate / fck_div * fck_div_factor;
+#else
+		if (fck_div_max == 16)
+			fck = prate / fck_div;
+		else
+			fck = prate / fck_div * 2;
+#endif
+
+		if (fck > max_dss_fck) {
+			DSS_DBG_CLK("%s:%d\n", __FUNCTION__, __LINE__);
+			continue;
+		}
+
+		if (min_fck_per_pck &&
+			fck < req_pck * min_fck_per_pck) {
+			DSS_DBG_CLK("%s:%d\n", __FUNCTION__, __LINE__);
+			continue;
+		}
+
+		dispc_find_clk_divs(is_tft, req_pck, fck, &cur_dispc);
+
+		DSS_DBG_CLK("%s:%d cur.pck %ld < best_pck %ld?\n", __FUNCTION__, __LINE__,
+			abs(cur_dispc.pck - req_pck),
+			abs(best_dispc.pck - req_pck));
+
+		if (abs(cur_dispc.pck - req_pck) <
+			abs(best_dispc.pck - req_pck)) {
+
+			DSS_DBG_CLK("%s:%d yes fck %lu fck_div %u\n", __FUNCTION__, __LINE__, fck, fck_div);
+			best_dss.fck = fck;
+			best_dss.fck_div = fck_div;
+
+			best_dispc = cur_dispc;
+
+			if (cur_dispc.pck == req_pck)
+				break;
+		}
+	}
+
+	/* Setup divisor */
+	*dispc_divisor = (cur_dispc.lck_div << 16) | cur_dispc.pck_div;
+	*result_fck_div = fck_div;
+	return 0;
 }
 
 /*
@@ -141,6 +320,7 @@ void omap3_dss_enable(void)
 void omap3_dss_dump(void)
 {
 	struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
 
 	DUMP_IT(control);
 	DUMP_IT(size_lcd);
@@ -150,6 +330,7 @@ void omap3_dss_dump(void)
 	DUMP_IT(config);
 	DUMP_IT(pol_freq);
 	DUMP_IT(default_color0);
+	printf("%p = %08x cd_clksel_dss\n", &prcm_base->clksel_dss, readl(&prcm_base->clksel_dss));
 }
 
 static int do_dss_dump (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])

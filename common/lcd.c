@@ -256,16 +256,18 @@ int do_echo_lcd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				case 'A':
 					/* Goto the lcd_anchor in environment */
 					s = getenv("lcd_anchor");
-					row = simple_strtoul(s, &r, 0);
-					if (r && *r==',') {
-						col = simple_strtoul(r+1, &r, 0);
-						if (r && !*r) {
-							if (row >= CONSOLE_ROWS)
-								row = CONSOLE_ROWS - 1;
-							if (row >= CONSOLE_COLS)
-								row = CONSOLE_COLS - 1;
-							console_row = row;
-							console_col = col;
+					if (s) {
+						row = simple_strtoul(s, &r, 0);
+						if (r && *r==',') {
+							col = simple_strtoul(r+1, &r, 0);
+							if (r && !*r) {
+								if (row >= CONSOLE_ROWS)
+									row = CONSOLE_ROWS - 1;
+								if (row >= CONSOLE_COLS)
+									row = CONSOLE_COLS - 1;
+								console_row = row;
+								console_col = col;
+							}
 						}
 					}
 					break;
@@ -542,8 +544,6 @@ U_BOOT_CMD(
 
 static int lcd_init (void *lcdbase)
 {
-	int ret;
-
 	/* Initialize the lcd controller */
 	debug ("[LCD] Initializing LCD frambuffer at %p\n", lcdbase);
 

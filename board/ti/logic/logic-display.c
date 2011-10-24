@@ -26,25 +26,92 @@ vidinfo_t panel_info = {
 #endif
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue) {}
 
-struct logic_screen {
-	char * name;
-	u32 width;
-	u32 height;
-	u32 bpp;
-	u32 bpix;
-	struct panel_config cfg;
+struct omap_video_timings {
+	/* Unit: pixels */
+	u16 x_res;
+	/* Unit: pixels */
+	u16 y_res;
+	/* Unit: KHz */
+	u32 pixel_clock;
+	/* Unit: pixel clocks */
+	u16 hsw;	/* Horizontal synchronization pulse width */
+	/* Unit: pixel clocks */
+	u16 hfp;	/* Horizontal front porch */
+	/* Unit: pixel clocks */
+	u16 hbp;	/* Horizontal back porch */
+	/* Unit: line clocks */
+	u16 vsw;	/* Vertical synchronization pulse width */
+	/* Unit: line clocks */
+	u16 vfp;	/* Vertical front porch */
+	/* Unit: line clocks */
+	u16 vbp;	/* Vertical back porch */
 };
 
-static struct logic_screen *default_screen;
+struct logic_panel {
+	char				*name;
+	int				config;
+	int				acb;
+	char				data_lines;
+	struct omap_video_timings	timing;
+};
+
+
+static struct logic_panel default_panel;
 
 ulong calc_fbsize(void) {
-	if (!default_screen)
+	ulong size;
+	if (!default_panel.timing.x_res || !default_panel.timing.y_res)
 		return 0;
 
-	return (default_screen->width * default_screen->height * (default_screen->bpp/8));
+	size = default_panel.timing.x_res * default_panel.timing.y_res;
+	size *= (default_panel.data_lines / 8);
+
+	return size;
 }
 
 
+#if 1
+struct logic_panel logic_panels[] = {
+	{
+		.name	= "15",
+		.config = OMAP_DSS_LCD_TFT | OMAP_DSS_LCD_IVS
+		| OMAP_DSS_LCD_ONOFF | OMAP_DSS_LCD_RF | OMAP_DSS_LCD_IEO
+				| OMAP_DSS_LCD_IHS,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 480 x 272, LQ043T1DG01 */
+			.x_res		= 480,
+			.y_res		= 272,
+			.pixel_clock	= 9000,
+			.hfp		= 3,
+			.hsw		= 42,
+			.hbp		= 2,
+			.vfp		= 4,
+			.vsw		= 11,
+			.vbp		= 3,
+		},
+	},
+	{
+		.name	= "3",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.timing = {
+			/* 320 x 240, LQ036Q1DA01 */
+			.x_res		= 320,
+			.y_res		= 240,
+			.pixel_clock	= 24500,
+			.hfp		= 20,
+			.hsw		= 20,
+			.hbp		= 20,
+			.vfp		= 3,
+			.vsw		= 3,
+			.vbp		= 4,
+		},
+	},
+};
+
+#else
 struct logic_screen logic_screens[] = {
 	{
 		/* Timing for the 4.3" display */
@@ -85,52 +152,41 @@ struct logic_screen logic_screens[] = {
 		}
 	},
 };
+#endif
 
-static struct logic_screen *find_screen(void)
+static struct logic_panel *find_panel(void)
 {
-	char *screen;
+	char *panel;
 	int i;
 
-	screen = getenv("display");
-	if (!screen) {
+	panel = getenv("display");
+	if (!panel) {
 		printf("No 'display' variable found in environment; suppress splashimage\n");
 		return NULL;
 	}
 
-	for (i=0; i<ARRAY_SIZE(logic_screens); ++i)
-		if (!strcmp(screen, logic_screens[i].name))
+	for (i=0; i<ARRAY_SIZE(logic_panels); ++i)
+		if (!strcmp(panel, logic_panels[i].name))
 			break;
 
-	if (i < ARRAY_SIZE(logic_screens)) {
-		printf("Found '%s' display screen\n", screen);
-		default_screen = &logic_screens[i];
-		panel_info.vl_col = default_screen->width;
-		panel_info.vl_row = default_screen->height;
-		panel_info.vl_bpix = default_screen->bpix;
+	if (i < ARRAY_SIZE(logic_panels)) {
+		printf("Found '%s' display panel\n", panel);
+		default_panel = logic_panels[i];
+		panel_info.vl_col = default_panel.timing.x_res;
+		panel_info.vl_row = default_panel.timing.y_res;
+		if (default_panel.data_lines == 16)
+			panel_info.vl_bpix = LCD_COLOR16;
+		else
+			panel_info.vl_bpix = LCD_COLOR24;
 		lcd_line_length = (panel_info.vl_col * NBITS (panel_info.vl_bpix)) / 8;
+#if 0
 		printf("%s:%d lcd_line_length %d\n", __FUNCTION__, __LINE__, lcd_line_length);
-		return default_screen;
+#endif
+		return &default_panel;
 	}
-	printf("display='%s' does not describe a valid screen!\n", screen);
+	printf("display='%s' does not describe a valid screen!\n", panel);
 	return NULL;
 }
-#if 0
-/*
- * Timings for LCD Display
- */
-static const struct panel_config lcd_cfg = {
-	/* Timing for the 4.3" display */
-	.timing_h	= 0x00100229, /* DISPC_TIMING_H */
-	.timing_v	= 0x0030020a, /* DISPC_TIMING_V */
-	.pol_freq	= 0x0003b000, /* DISPC_POL_FREQ */
-	.divisor	= 0x0001000b, /* DISPC_DIVISOR */
-	.lcd_size	= 0x010f01df, /* DISPC_SIZE_LCD */
-	.panel_type	= 0x01, /* Active Matrix TFT */
-	.data_lines	= 0x01, /* 1=RGB16, 2=RGB18, 3=RGB24 */
-	.load_mode	= 0x02, /* Frame Mode */
-	.panel_color	= 0x00000000, /* black */
-};
-#endif
 
 /* Return size of largest framebuffer (so system can reserve memory on start) */
 ulong board_lcd_setmem(ulong addr)
@@ -151,30 +207,57 @@ void touchup_display_env(void)
 void lcd_ctrl_init(void *lcdbase)
 {
 	struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
-	struct logic_screen *screen;
-	struct panel_config *panel;
-
-	printf("%s: lcdbase %p\n", __FUNCTION__, lcdbase);
+	struct logic_panel *panel;
+	struct panel_config dss_panel;
+	int ret;
 
 	memset(&panel_info, 0, sizeof(panel_info));
-	screen = find_screen();
-	if (!screen)
+	panel = find_panel();
+	if (!panel)
 		return;
-	
+
+	/* Convert from timings into panel_config structure */
+	dss_panel.panel_color = 0x0; /* black */
+	dss_panel.load_mode = 0x2; /* Frame Mode */
+	dss_panel.panel_type = 1; /* Active TFT */
+
+	dss_panel.timing_h = panel->timing.hsw - 1;
+	dss_panel.timing_h |= ((panel->timing.hfp - 1) << 8);
+	dss_panel.timing_h |= ((panel->timing.hbp - 1) << 20);
+	dss_panel.timing_v = panel->timing.vsw - 1;
+	dss_panel.timing_v |= ((panel->timing.vfp - 1) << 8);
+	dss_panel.timing_v |= ((panel->timing.vbp - 1)  << 16);
+	dss_panel.pol_freq = panel->acb;
+	dss_panel.pol_freq |= ((panel->config & 0x3f) << 12);
+	dss_panel.lcd_size = panel->timing.x_res - 1;
+	dss_panel.lcd_size |= (panel->timing.y_res - 1) << 16;
+	if (panel->data_lines == 16)
+		dss_panel.data_lines = 1;
+	else if (panel->data_lines == 24)
+		dss_panel.data_lines = 2;
+	else {
+		printf("%s: Invalid data_lines!\n", __FUNCTION__);
+		memset(&panel_info, 0, sizeof(panel_info));
+		return;
+	}
+
+	dss_panel.pixel_clock = panel->timing.pixel_clock;
+
 	/* configure DSS for single graphics layer */
-	panel = &screen->cfg;
-	omap3_dss_panel_config(panel);
+	omap3_dss_panel_config(&dss_panel);
 
 	writel((ulong)lcdbase, &dispc->gfx_ba0); /* frame buffer address */
 	writel((ulong)lcdbase, &dispc->gfx_ba1); /* frame buffer address */
-	writel(panel->lcd_size, &dispc->gfx_size); /* size - same as LCD */
+	writel(dss_panel.lcd_size, &dispc->gfx_size); /* size - same as LCD */
 #if 1
 	writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
 #else
 	writel((1<<0)|(6<<1)|(1<<5), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
 #endif
 
+#if 0
 	touchup_display_env();
+#endif
 }
 
 void lcd_enable(void)

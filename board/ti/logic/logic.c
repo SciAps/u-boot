@@ -151,13 +151,16 @@ void nand_switch_ecc_method(int method)
  */
 void touchup_env(void)
 {
-	printf("%s:%d\n", __FUNCTION__, __LINE__);
+	/* Set the defaultecc environment variable to the "natural"
+	 * ECC method supported by the NAND chip */
 	if (omap3logic_nand_default == OMAP_ECC_CHIP)
 		setenv("defaultecc", "chip");
 	else if (omap3logic_nand_default == OMAP_ECC_HW)
 		setenv("defaultecc", "hw");
 	else
 		printf("%s: bad NAND ECC default %d!\n", __FUNCTION__, omap3logic_nand_default);
+
+	/* touchup the display environment variable(s) */
 	touchup_display_env();
 }
 
