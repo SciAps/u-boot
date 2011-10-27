@@ -33,7 +33,8 @@
 
 #include "omap3_mmc.h"
 
-#if 0
+#define USE_OLD_TRANSPEED
+#ifdef USE_OLD_TRANSPEED
 static const unsigned short mmc_transspeed_val[15][4] = {
 	{CLKD(10, 1), CLKD(10, 10), CLKD(10, 100), CLKD(10, 1000)},
 	{CLKD(12, 1), CLKD(12, 10), CLKD(12, 100), CLKD(12, 1000)},
@@ -481,10 +482,9 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 {
 	unsigned char ret_val;
 	unsigned int argument;
-#if 1
 	unsigned int trans_clk, retries = 2;
-#else
-	unsigned int trans_clk, trans_fact, trans_unit, retries = 2;
+#ifdef USE_OLD_TRANSPEED
+	unsigned int trans_fact, trans_unit;
 #endif
 	unsigned char trans_speed;
 	mmc_resp_t mmc_resp;
@@ -517,7 +517,7 @@ static unsigned char configure_mmc(mmc_card_data *mmc_card_cur)
 		trans_speed = mmc_card_cur->max_freq;
 	}
 
-#if 1
+#ifndef USE_OLD_TRANSPEED
 	/* We know the MMC reference clock, just do the division and be done
 	   with it! */
 	trans_clk = MMC_CLOCK_REFERENCE / trans_speed;
