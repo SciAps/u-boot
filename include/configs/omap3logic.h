@@ -213,6 +213,10 @@
 #define CONFIG_TWL4030_POWER		1
 #define CONFIG_TWL4030_GPIO		1
 #define CONFIG_TWL4030_PWM		1
+#define CONFIG_TWL4030_CHARGING		1
+
+/* Charge the batter unless $disablecharging == "yes" */
+#define CONFIG_ENABLE_TWL4030_CHARGING	1
 
 /*
  * Board NAND Info.
@@ -262,6 +266,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"mtdids=" MTDIDS_DEFAULT "\0"	\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"	\
+	"disablecharing=no\0" \
 	"autoboot=if mmc init; then " \
 			"if run loadbootscript; then " \
 				"run bootscript; " \

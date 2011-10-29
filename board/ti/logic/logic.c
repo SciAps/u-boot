@@ -238,6 +238,19 @@ int board_late_init(void)
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	nand_unlock(&nand_info[0], 0x0, nand_info[0].size);
 #endif
+
+#ifdef CONFIG_ENABLE_TWL4030_CHARGING
+	/* Enable charging on Torpedo unless $disablecharging == yes */
+	if (gd->bd->bi_arch_number == MACH_TYPE_OMAP3_TORPEDO) {
+		char *str;
+		str = getenv("disablecharging");
+		if (!str || strcmp(str, "yes") != 0) {
+			printf("Torpedo: Enabling battery charging\n");
+			twl4030_enable_charging();
+		}
+	}
+#endif
+
 #ifdef CONFIG_CMD_CACHE
 	dcache_enable();
 	printf ("Data (writethrough) Cache is %s\n",
