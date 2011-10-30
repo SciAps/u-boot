@@ -589,7 +589,7 @@ void twl4030_power_init(void);
 /* For initializing mmc power */
 void twl4030_power_mmc_init(void);
 /* For charging */
-void twl4030_enable_charging(void);
+int twl4030_enable_charging(void);
 
 /*
  * LED
