@@ -471,7 +471,7 @@ U_BOOT_CMD(
 #ifdef CONFIG_GDB_SECTION_STARTS
 int do_gdb_debug(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	printf("add-symbol-file u-boot %#x -s .data %#x -s .rodata %#x -s .bss %#x\n",
+	printf("add-symbol-file u-boot %#lx -s .data %#lx \\\n\t-s .rodata %#lx -s .bss %#lx\n",
 		gd->relocaddr, gd->data_start, gd->rodata_start, gd->bss_start);
 	return 0;
 }
