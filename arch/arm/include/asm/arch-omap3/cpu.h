@@ -454,9 +454,13 @@ struct prm {
 
 #define RESETDONE		(0x1 << 0)
 
-#define TCLR_ST			(0x1 << 0)
-#define TCLR_AR			(0x1 << 1)
+#define TCLR_GPO_CFG		(0x1 << 14)
+#define TCLR_PT			(0x1 << 12)
+#define TCLR_SCPWM		(0x1 << 7)
+#define TCLR_CE			(0x1 << 6)
 #define TCLR_PRE		(0x1 << 5)
+#define TCLR_AR			(0x1 << 1)
+#define TCLR_ST			(0x1 << 0)
 
 /* SMX-APE */
 #define PM_RT_APE_BASE_ADDR_ARM		(SMX_APE_BASE + 0x10000)

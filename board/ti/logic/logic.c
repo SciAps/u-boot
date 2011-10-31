@@ -31,12 +31,13 @@
 #include <netdev.h>
 #include <flash.h>
 #include <nand.h>
+#include <i2c.h>
+#include <twl4030.h>
 #include <asm/io.h>
 #include <asm/arch/mem.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/gpio.h>
-#include <i2c.h>
 #include <asm/mach-types.h>
 #include "logic.h"
 #include "product_id.h"
@@ -474,7 +475,6 @@ static void setup_isp176x_settings(void)
  */
 static void fix_flash_sync(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
 	int arch_number;
 	u16 rcrval;
 

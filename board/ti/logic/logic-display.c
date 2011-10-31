@@ -1,11 +1,15 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/mux.h>
 #include <asm/arch/dss.h>
+#include <asm/arch/timer.h>
 #include <twl4030.h>
 #include <lcd.h>
 #include "splash-480x272.h"
 #include "logic-proto.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /* LCD-required members */
 int lcd_line_length;  /* initialized in lcd.c */
@@ -204,12 +208,76 @@ void touchup_display_env(void)
 	setenv("splashimage", splash_bmp_gz_str);
 }
 
+void lcd_setup_pinmux(int data_lines)
+{
+	u32 arch_number;
+
+	arch_number = gd->bd->bi_arch_number;
+
+	/* Setup common pins */
+	MUX_VAL(CP(DSS_PCLK),		(IDIS | PTD | DIS | M0)); /*DSS_PCLK*/
+	MUX_VAL(CP(DSS_HSYNC),		(IDIS | PTD | DIS | M0)); /*DSS_HSYNC*/
+	MUX_VAL(CP(DSS_VSYNC),		(IDIS | PTD | DIS | M0)); /*DSS_VSYNC*/
+	MUX_VAL(CP(DSS_ACBIAS),		(IDIS | PTD | DIS | M0)); /*DSS_ACBIAS*/
+	MUX_VAL(CP(DSS_DATA6),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA7),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA8),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA9),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA10),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA11),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA12),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA13),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA14),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+	MUX_VAL(CP(DSS_DATA15),		(IDIS | PTD | DIS | M0)); /*DSS_DATA6*/
+
+	/* omap35x use DSS_DATA0:15
+	 * dm37x SOM uses DSS_DATA0:15
+	 * dm37x Torpedo uses DSS_DATA18:23 as DSS_DATA0:5 */
+
+	if (arch_number == MACH_TYPE_DM3730_TORPEDO) {
+		MUX_VAL(CP(DSS_DATA18),	(IDIS | PTD | DIS | M3)); /*DSS_DATA0*/
+		MUX_VAL(CP(DSS_DATA19),	(IDIS | PTD | DIS | M3)); /*DSS_DATA1*/
+		MUX_VAL(CP(DSS_DATA20),	(IDIS | PTD | DIS | M3)); /*DSS_DATA2*/
+		MUX_VAL(CP(DSS_DATA21),	(IDIS | PTD | DIS | M3)); /*DSS_DATA3*/
+		MUX_VAL(CP(DSS_DATA22),	(IDIS | PTD | DIS | M3)); /*DSS_DATA4*/
+		MUX_VAL(CP(DSS_DATA23),	(IDIS | PTD | DIS | M3)); /*DSS_DATA5*/
+	} else {
+		MUX_VAL(CP(DSS_DATA0),	(IDIS | PTD | DIS | M0)); /*DSS_DATA0*/
+		MUX_VAL(CP(DSS_DATA1),	(IDIS | PTD | DIS | M0)); /*DSS_DATA1*/
+		MUX_VAL(CP(DSS_DATA2),	(IDIS | PTD | DIS | M0)); /*DSS_DATA2*/
+		MUX_VAL(CP(DSS_DATA3),	(IDIS | PTD | DIS | M0)); /*DSS_DATA3*/
+		MUX_VAL(CP(DSS_DATA4),	(IDIS | PTD | DIS | M0)); /*DSS_DATA4*/
+		MUX_VAL(CP(DSS_DATA5),	(IDIS | PTD | DIS | M0)); /*DSS_DATA5*/
+	}
+
+	if (data_lines == 16)
+		return;
+
+	MUX_VAL(CP(DSS_DATA16),	(IDIS | PTD | DIS | M0)); /*DSS_DATA16*/
+	MUX_VAL(CP(DSS_DATA17),	(IDIS | PTD | DIS | M0)); /*DSS_DATA17*/
+
+	if (arch_number == MACH_TYPE_DM3730_TORPEDO) {
+		MUX_VAL(CP(SYS_BOOT0),	(IDIS | PTD | DIS | M3)); /*DSS_DATA18*/
+		MUX_VAL(CP(SYS_BOOT1),	(IDIS | PTD | DIS | M3)); /*DSS_DATA19*/
+		MUX_VAL(CP(SYS_BOOT3),	(IDIS | PTD | DIS | M3)); /*DSS_DATA20*/
+		MUX_VAL(CP(SYS_BOOT4),	(IDIS | PTD | DIS | M3)); /*DSS_DATA21*/
+		MUX_VAL(CP(SYS_BOOT5),	(IDIS | PTD | DIS | M3)); /*DSS_DATA22*/
+		MUX_VAL(CP(SYS_BOOT6),	(IDIS | PTD | DIS | M3)); /*DSS_DATA23*/
+	} else {
+		MUX_VAL(CP(DSS_DATA18),	(IDIS | PTD | DIS | M0)); /*DSS_DATA18*/
+		MUX_VAL(CP(DSS_DATA19),	(IDIS | PTD | DIS | M0)); /*DSS_DATA19*/
+		MUX_VAL(CP(DSS_DATA20),	(IDIS | PTD | DIS | M0)); /*DSS_DATA20*/
+		MUX_VAL(CP(DSS_DATA21),	(IDIS | PTD | DIS | M0)); /*DSS_DATA21*/
+		MUX_VAL(CP(DSS_DATA22),	(IDIS | PTD | DIS | M0)); /*DSS_DATA22*/
+		MUX_VAL(CP(DSS_DATA23),	(IDIS | PTD | DIS | M0)); /*DSS_DATA23*/
+	}	
+}
+
 void lcd_ctrl_init(void *lcdbase)
 {
 	struct dispc_regs *dispc = (struct dispc_regs *) OMAP3_DISPC_BASE;
 	struct logic_panel *panel;
 	struct panel_config dss_panel;
-	int ret;
 
 	memset(&panel_info, 0, sizeof(panel_info));
 	panel = find_panel();
@@ -226,7 +294,7 @@ void lcd_ctrl_init(void *lcdbase)
 	dss_panel.timing_h |= ((panel->timing.hbp - 1) << 20);
 	dss_panel.timing_v = panel->timing.vsw - 1;
 	dss_panel.timing_v |= ((panel->timing.vfp - 1) << 8);
-	dss_panel.timing_v |= ((panel->timing.vbp - 1)  << 16);
+	dss_panel.timing_v |= ((panel->timing.vbp - 1)  << 20);
 	dss_panel.pol_freq = panel->acb;
 	dss_panel.pol_freq |= ((panel->config & 0x3f) << 12);
 	dss_panel.lcd_size = panel->timing.x_res - 1;
@@ -242,6 +310,8 @@ void lcd_ctrl_init(void *lcdbase)
 	}
 
 	dss_panel.pixel_clock = panel->timing.pixel_clock;
+
+	lcd_setup_pinmux(dss_panel.data_lines);
 
 	/* configure DSS for single graphics layer */
 	omap3_dss_panel_config(&dss_panel);
@@ -263,9 +333,33 @@ void lcd_ctrl_init(void *lcdbase)
 void lcd_enable(void)
 {
 	int mSec;
+	u32 arch_number;
+	int gpio_backlight_pwr;
+	int gpio_panel_pwr;
+
+	arch_number = gd->bd->bi_arch_number;
+	if (arch_number == MACH_TYPE_DM3730_TORPEDO
+		|| arch_number == MACH_TYPE_OMAP3_TORPEDO) {
+		gpio_backlight_pwr = 154;
+		gpio_panel_pwr = 155;
+		MUX_VAL(CP(MCBSP4_DX), (IDIS | PTD | EN  | M4)); /*GPIO_154*/
+
+	} else {
+		MUX_VAL(CP(SYS_BOOT6), (IDIS | PTU | DIS | M4)); /*GPIO_8 */
+		gpio_backlight_pwr = 8;
+		gpio_panel_pwr = 155;
+	}
+	MUX_VAL(CP(MCBSP4_FSX), (IDIS | PTD | EN  | M4)); /*GPIO_155*/
+
+	/* Kill LCD_BACKLIGHT_PWR */
+	if (!omap_request_gpio(gpio_backlight_pwr)) {
+		omap_set_gpio_direction(gpio_backlight_pwr, 0);
+		omap_set_gpio_dataout(gpio_backlight_pwr, 0);
+	}
 
 	lcd_is_enabled = 0; /* keep console messages on the serial port */
 
+	/* Start clocks */
 	omap3_dss_enable();
 
 	/* Delay 300mS to allow 4.3" panel to initialize */
@@ -277,75 +371,72 @@ void lcd_enable(void)
 	 * backlight 154 (torpedo); 8 (som)
 	 */
 
+#if 0
 	/* Kill SOM LCD_BACKLIGHT_PWR */
 	if (!omap_request_gpio(8)) {
 		omap_set_gpio_direction(8, 0);
 		omap_set_gpio_dataout(8, 0);
 	}
+#endif
 	 
 	/* turn on LCD_PANEL_PWR */
-	if (!omap_request_gpio(155)) {
-		omap_set_gpio_direction(155, 0);
-		omap_set_gpio_dataout(155, 1);
+	if (!omap_request_gpio(gpio_panel_pwr)) {
+		omap_set_gpio_direction(gpio_panel_pwr, 0);
+		omap_set_gpio_dataout(gpio_panel_pwr, 1);
 	} else
 		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
 
 
-#if 1
-#ifdef CONFIG_TWL4030_PWM
-	twl4030_set_pwm0(70, 100); /* 70% backlight brighntess */
-#else
-	/* SOM PWM0 output is GPIO.6 on TWL4030... */
-	if (!twl4030_request_gpio(6)) {
-		status = twl4030_set_gpio_direction(6, 0);
-		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
-		status = twl4030_set_gpio_dataout(6, 1);
-		printf("%s:%d status %d\n", __FUNCTION__, __LINE__, status);
-	} else
-		printf("%s:%d - failed to get twl4030_gpio!\n", __FUNCTION__, __LINE__);
-#endif
-#else
-	/* set LCD_PWM0 to full brightness */
-	if (!omap_request_gpio(56)) {
+	/* Torpedo-20 boards uses GPIO_56 as their backlight SOM
+	 * use GPIO.6 on TWL4030 */
+
+	if (arch_number == MACH_TYPE_DM3730_TORPEDO
+		|| arch_number == MACH_TYPE_OMAP3_TORPEDO) {
+
+#if 0
+		MUX_VAL(CP(GPMC_NCS5), (IDIS | PTU | DIS | M4)); /*GPT10 backlight */
+		omap_request_gpio(56);
 		omap_set_gpio_direction(56, 0);
 		omap_set_gpio_dataout(56, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-
+#else
+		MUX_VAL(CP(GPMC_NCS5), (IEN | PTD | EN | M3)); /*GPT10 backlight */
+		init_gpt_timer(10, 70, 100);
 #endif
+	} else {
+		twl4030_set_pwm0(70, 100); /* 70% backlight brighntess */
+	}
 
 	/* Sleep 300mS to allow panel to stabilize */
 	for (mSec=0; mSec < 300; ++mSec)
 		udelay(1000);
 
-#if 1
 	/* turn on LCD_BACKLIGHT_PWR SOM LV */
-	if (!omap_request_gpio(8)) {
-		omap_set_gpio_direction(8, 0);
-		omap_set_gpio_dataout(8, 1);
+	if (!omap_request_gpio(gpio_backlight_pwr)) {
+		omap_set_gpio_direction(gpio_backlight_pwr, 0);
+		omap_set_gpio_dataout(gpio_backlight_pwr, 1);
 	} else
 		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-#else
-	/* turn on LCD_BACKLIGHT_PWR Torpedo */
-	if (!omap_request_gpio(154)) {
-		omap_set_gpio_direction(154, 0);
-		omap_set_gpio_dataout(154, 1);
-	} else
-		printf("%s:%d fail!\n", __FUNCTION__, __LINE__);
-
-#endif
 
 }
 
 int do_backlight(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
+	u32 arch_number;
 	ulong level;
-#if 1
+
 	level = simple_strtoul(argv[1], NULL, 10);
-	twl4030_set_pwm0(level, 100); /* Adjust PWM */
-#else
-	printf("%s: don't know how to handle Torpedo!\n", __FUNCTION__);
-#endif
+
+	arch_number = gd->bd->bi_arch_number;
+	if (arch_number == MACH_TYPE_DM3730_TORPEDO
+		|| arch_number == MACH_TYPE_OMAP3_TORPEDO) {
+
+		/* Adjust Torpedo GPT10 timer (used for LCD_PWM0) */
+		init_gpt_timer(10, level, 100);
+	} else {
+		/* Adjust SOM LV TWL4030 PWM0 (used for LCD_PWM0) */
+		twl4030_set_pwm0(level, 100);
+	}
+
 	return 0;
 }
 
@@ -361,6 +452,241 @@ int do_dump_pwm0(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 }
 
 U_BOOT_CMD(dump_pwm0, 1, 1, do_dump_pwm0,
-	"dump_pwm0 - dump TWL PWM registers",
+	" - dump TWL PWM registers",
+	""
+);
+
+struct fb_bitfield {
+	u8 length;
+	u8 offset;
+};
+static struct fb_var_screeninfo {
+	int bits_per_pixel;
+	u32 xres, yres;
+	struct fb_bitfield red, green, blue;
+	u32 line_length; /* bytes/line */
+} fb_var;
+
+void *fb_ptr;
+unsigned int fb_stride;
+unsigned int fb_size;
+int fb_max_x, fb_max_y;
+
+typedef struct {
+  unsigned int x,y;
+} point_t;
+
+typedef unsigned int color_t;
+
+void
+draw_pixel_32(point_t *p, color_t c)
+{
+  unsigned int offset;
+
+  if (p->x >= fb_max_x || p->y >= fb_max_y)
+    printf("%s: point [%u:%u] out of range\n", __FUNCTION__, p->x, p->y);
+
+  offset = p->y * fb_stride + p->x*sizeof(int);
+  *((unsigned int *)((unsigned char *)fb_ptr + offset)) = c;
+}
+
+void
+draw_pixel_16(point_t *p, color_t c)
+{
+  unsigned int offset;
+
+  if (p->x >= fb_max_x || p->y >= fb_max_y)
+    printf("%s: point [%u:%u] out of range\n", __FUNCTION__, p->x, p->y);
+
+  offset = p->y * fb_stride + p->x*sizeof(short);
+  *((unsigned short *)((unsigned char *)fb_ptr + offset)) = c;
+}
+
+void
+draw_pixel_8(point_t *p, color_t c)
+{
+  unsigned int offset;
+
+  if (p->x >= fb_max_x || p->y >= fb_max_y)
+    printf("%s: point [%u:%u] out of range\n", __FUNCTION__, p->x, p->y);
+
+  offset = p->y * fb_stride + p->x*sizeof(char);
+  *((unsigned char *)((unsigned char *)fb_ptr + offset)) = c;
+}
+
+void (*draw_pixel)(point_t *p, color_t c);
+
+void draw_rect(point_t *p1, point_t *p2, color_t c, int fill)
+{
+  point_t p;
+
+  if (fill) {
+    for (p.y = p1->y; p.y <= p2->y; ++p.y)
+      for (p.x = p1->x; p.x <= p2->x; ++p.x)
+	(*draw_pixel)(&p, c);
+  } else {
+    for (p.x = p1->x; p.x <= p2->x; ++p.x) {
+      p.y = p1->y;
+      (*draw_pixel)(&p, c);
+      p.y = p2->y;
+      (*draw_pixel)(&p, c);
+    }
+    for (p.y = p1->y; p.y <= p2->y; ++p.y) {
+      p.x = p1->x;
+      (*draw_pixel)(&p, c);
+      p.x = p2->x;
+      (*draw_pixel)(&p, c);
+    }
+  }
+}
+
+void draw_test_frame(int x, int y, int margin, color_t c)
+{
+  point_t start, end;
+
+  start.x = margin;
+  end.x = x - margin - 1;
+  start.y = margin;
+  end.y = y - margin - 1;
+
+  draw_rect(&start, &end, c, 0);
+}
+
+void
+clear_video_frame(void)
+{
+  memset(fb_ptr, 0, fb_size);
+}
+
+/* Draw a ramp, [l,r] to [l+w,r+h], in color *color */
+void draw_ramp (point_t *start, point_t *end, struct fb_bitfield *fb_bits, struct fb_var_screeninfo *fb_var)
+{
+	point_t ul, br;
+	int i, width_round_up;
+	int colors;
+
+	ul = *start;
+	br = *end;
+
+	colors = 1<<fb_bits->length;
+	width_round_up = (end->x % colors) ? 1 : 0;
+
+	for (i=0; i<colors; ++i) {
+		draw_rect(&ul, &br, i<<fb_bits->offset, 1);
+		ul.x = br.x;
+		br.x += fb_var->xres / colors + ((i % 2) * width_round_up);
+		if (br.x >= fb_var->xres)
+			br.x = fb_var->xres-1;
+	}
+}
+
+void scribble_frame_buffer(void)
+{
+	unsigned int x,y;
+	color_t color_white, color_black, color_blue, color_red;
+	unsigned int colorbitwidth, width_round_up;
+	point_t start, end;
+
+	if (fb_var.bits_per_pixel == 8)
+		draw_pixel = draw_pixel_8;
+	else if (fb_var.bits_per_pixel == 16)
+		draw_pixel = draw_pixel_16;
+	else
+		draw_pixel = draw_pixel_32;
+
+	printf("%s:%d draw_pixel %p\n", __FUNCTION__, __LINE__, draw_pixel);
+  
+	// white is all bits on
+	color_white = (((1<<fb_var.red.length)-1) << fb_var.red.offset)
+		| (((1<<fb_var.green.length)-1) << fb_var.green.offset)
+		| (((1<<fb_var.blue.length)-1) << fb_var.blue.offset);
+
+	// black is all bits off
+	color_black = 0;
+
+	color_blue = (((1 << fb_var.blue.length) - 1) << fb_var.blue.offset);
+
+	color_red = (((1 << fb_var.red.length) - 1) << fb_var.red.offset);
+
+
+
+	x = fb_var.xres;
+	y = fb_var.yres;
+	colorbitwidth = 32;
+
+	start.x = 0;
+	width_round_up = (x % colorbitwidth) ? 1 : 0;
+	end.x = x / colorbitwidth + width_round_up;
+
+	end.y = y/4;
+	start.y = 0;
+	draw_ramp(&start, &end, &fb_var.red, &fb_var);
+	start.y = end.y;
+	end.y += y/4;
+	draw_ramp(&start, &end, &fb_var.green, &fb_var);
+	start.y = end.y;
+	end.y += y/4;
+	draw_ramp(&start, &end, &fb_var.blue, &fb_var);
+	/* draw stipple, stop test when error is encountered */
+	for (start.y = 3 * (y / 4); start.y < y; start.y++) {
+		for (start.x = 0; start.x < (x / 3); start.x++) {
+			draw_rect(&start, &start,
+				(start.x ^ start.y) & 1 ? color_white : color_black,
+				0);
+		}
+	}
+
+	/* draw vert-lines, stop test when error is encountered */
+	start.y = 3 * (y / 4);
+	end.y = y-1;
+	for (start.x = x / 3; start.x < 2 * (x / 3); start.x++) {
+		end.x = start.x;
+		draw_rect(&start, &end,
+			start.x & 1 ? color_white : color_black, 0);
+	}
+
+	/* draw horiz-lines, stop test when error is encountered */
+	start.x = 2 * (x / 3);
+	end.x = x-1;
+	for (start.y = 3 * (y / 4); start.y < y; start.y++) {
+		end.y = start.y;
+		draw_rect(&start, &end,
+			start.y & 1 ? color_white : color_black, 0);
+	}
+
+
+	// Draw some frames
+	draw_test_frame(x, y, 0, color_white);
+	draw_test_frame(x, y, 1, color_red);
+	draw_test_frame(x, y, 2, color_blue);
+}
+
+int do_draw_test(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	if (panel_info.vl_col && panel_info.vl_row) {
+		fb_var.xres = panel_info.vl_col;
+		fb_var.yres = panel_info.vl_row;
+		if (panel_info.vl_bpix == LCD_COLOR16) {
+			fb_var.bits_per_pixel = 16;
+			fb_var.red.offset = 11;
+			fb_var.red.length = 5;
+			fb_var.blue.offset = 5;
+			fb_var.blue.length = 6;
+			fb_var.green.offset = 0;
+			fb_var.green.length = 5;
+		}
+		fb_var.line_length = fb_var.xres * (fb_var.bits_per_pixel / 8);
+		fb_ptr = (void *)gd->fb_base;
+		fb_stride = fb_var.line_length;
+		fb_size = fb_stride * fb_var.yres;
+  fb_max_x = fb_var.xres;
+  fb_max_y = fb_var.yres;
+		scribble_frame_buffer();
+	}
+	return 0;
+}
+
+U_BOOT_CMD(draw_test, 1, 1, do_draw_test,
+	" - Draw ramps/stipples/boarders on LCD",
 	""
 );

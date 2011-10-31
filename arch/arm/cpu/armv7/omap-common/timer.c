@@ -33,11 +33,13 @@
  */
 
 #include <common.h>
+#include <errno.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 static struct gptimer *timer_base = (struct gptimer *)CONFIG_SYS_TIMERBASE;
+
 
 /*
  * Nothing really to do with interrupts, just starts up a counter.
@@ -132,4 +134,52 @@ unsigned long long get_ticks(void)
 ulong get_tbclk(void)
 {
 	return CONFIG_SYS_HZ;
+}
+
+int init_gpt_timer(u32 timer, u32 value, u32 range)
+{
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
+	struct gptimer *timer_base;
+	u32 reg;
+
+	printf("%s: timer %u value %u range %u\n", __FUNCTION__, timer, value, range);
+	switch(timer) {
+	case 10:
+		writel(readl(&prcm_base->clksel_core) | (1 << 6), &prcm_base->clksel_core);
+		writel(readl(&prcm_base->fclken1_core) | (1 << 11), &prcm_base->fclken1_core);
+		writel(readl(&prcm_base->iclken1_core) | (1 << 11), &prcm_base->iclken1_core);
+		timer_base = (struct gptimer *)OMAP34XX_GPT10;
+		break;
+	default:
+		return -ENODEV;
+	}
+
+	/* dm_timer_set_load */
+	reg = readl(&timer_base->tclr);
+	reg |= TCLR_AR;
+	writel(reg, &timer_base->tclr);
+	writel(0xffff0000, &timer_base->tldr);
+	writel(0, &timer_base->ttgr);
+
+	/* dm_set_pwm */
+	reg = readl(&timer_base->tclr);
+	reg &= ~(TCLR_GPO_CFG | TCLR_SCPWM | TCLR_PT | (0x03 << 10));
+	reg |= TCLR_PT;
+	reg |= (0x2 << 10); /* OVERFLOW_AND_COMPARE */
+	writel(reg, &timer_base->tclr);
+
+	/* dm_set_match */
+	reg = readl(&timer_base->tclr);
+	reg |= TCLR_CE;
+	writel(reg, &timer_base->tclr);
+	writel(0xffff0000 | (((value * 0xff) / range) << 8), &timer_base->tmar);
+
+	/* dm_timer_start */
+	reg = readl(&timer_base->tclr);
+	if (!(reg & TCLR_ST)) {
+		reg |= TCLR_ST;
+		writel(reg | TCLR_ST, &timer_base->tclr);
+	}
+
+	return 0;
 }
