@@ -142,7 +142,6 @@ int init_gpt_timer(u32 timer, u32 value, u32 range)
 	struct gptimer *timer_base;
 	u32 reg;
 
-	printf("%s: timer %u value %u range %u\n", __FUNCTION__, timer, value, range);
 	switch(timer) {
 	case 10:
 		writel(readl(&prcm_base->clksel_core) | (1 << 6), &prcm_base->clksel_core);

@@ -850,6 +850,7 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(MCBSP2_DX),		(IDIS | PTD | EN  | M0)); /*McBSP2_DX*/
 #endif
 
+#if 0 /* Setup in lcd_setup_pinmux() */
 	MUX_VAL(CP(DSS_PCLK),		(IDIS | PTD | EN  | M0)); /*DSS_PCLK*/
 	MUX_VAL(CP(DSS_HSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_HSYNC*/
 	MUX_VAL(CP(DSS_VSYNC),		(IDIS | PTD | EN  | M0)); /*DSS_VSYNC*/
@@ -931,6 +932,7 @@ void set_muxconf_regs(void)
 	MUX_VAL(CP(DSS_DATA21),		(IDIS | PTD | EN  | M0)); /*DSS_DATA21*/
 	MUX_VAL(CP(DSS_DATA22),		(IDIS | PTD | EN  | M0)); /*DSS_DATA22*/
 	MUX_VAL(CP(DSS_DATA23),		(IDIS | PTD | EN  | M0)); /*DSS_DATA23*/
+#endif
 #endif
 
  /*Expansion card  */

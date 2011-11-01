@@ -250,7 +250,8 @@ void lcd_setup_pinmux(int data_lines)
 		MUX_VAL(CP(DSS_DATA5),	(IDIS | PTD | DIS | M0)); /*DSS_DATA5*/
 	}
 
-	if (data_lines == 16)
+	/* No need to mux the top 8 pins if not using them */
+	if (data_lines <= 16)
 		return;
 
 	MUX_VAL(CP(DSS_DATA16),	(IDIS | PTD | DIS | M0)); /*DSS_DATA16*/
@@ -311,7 +312,7 @@ void lcd_ctrl_init(void *lcdbase)
 
 	dss_panel.pixel_clock = panel->timing.pixel_clock;
 
-	lcd_setup_pinmux(dss_panel.data_lines);
+	lcd_setup_pinmux(panel->data_lines);
 
 	/* configure DSS for single graphics layer */
 	omap3_dss_panel_config(&dss_panel);
@@ -393,15 +394,8 @@ void lcd_enable(void)
 	if (arch_number == MACH_TYPE_DM3730_TORPEDO
 		|| arch_number == MACH_TYPE_OMAP3_TORPEDO) {
 
-#if 0
-		MUX_VAL(CP(GPMC_NCS5), (IDIS | PTU | DIS | M4)); /*GPT10 backlight */
-		omap_request_gpio(56);
-		omap_set_gpio_direction(56, 0);
-		omap_set_gpio_dataout(56, 1);
-#else
 		MUX_VAL(CP(GPMC_NCS5), (IEN | PTD | EN | M3)); /*GPT10 backlight */
 		init_gpt_timer(10, 70, 100);
-#endif
 	} else {
 		twl4030_set_pwm0(70, 100); /* 70% backlight brighntess */
 	}
