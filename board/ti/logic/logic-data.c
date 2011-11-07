@@ -661,6 +661,14 @@ set_it:
 	}
 	if (DEBUG_PRODUCTION_DATA)
 		printf("setenv '%s' '%s'\n", __FUNCTION__, ethbuf);
+
+	/* If already set, then don't change it */
+	s = getenv(buf);
+	if (s) {
+		if (strcmp(s, ethbuf) != 0)
+			printf("Overriding %s productID value %s with environment value\n", buf, ethbuf);
+		return;
+	}
 	setenv(buf, ethbuf);
 }
 
