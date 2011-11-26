@@ -526,6 +526,7 @@
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (2 << 20)
 #define CONFIG_SPLASH_SCREEN
+#define CONFIG_SYS_WHITE_ON_BLACK	/* White characters on black background */
 
 /* Have board_set_lcdmem() function */
 #define CONFIG_BOARD_LCD_SETMEM

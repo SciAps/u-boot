@@ -31,7 +31,7 @@
 #include <asm/arch/sys_proto.h>
 
 #ifdef DEBUG
-#define DSS_DBG_CLK(fmt, ...) printf(fmt, ## args)
+#define DSS_DBG_CLK(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
 #define DSS_DBG_CLK(fmt, ...)
 #endif
@@ -244,24 +244,17 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 
 	min_fck_per_pck = 1;
 
-	if (cpu_family == CPU_OMAP36XX) {
-		fck_div_max = 16;
-		fck_div_factor = 2;
-	} else {
-		fck_div_max = 16;
-		fck_div_factor = 1;
-	}
+#ifdef CONFIG_OMAP44XX	
+	fck_div_max = 32;
+	fck_div_factor = 2;
+#else
+	fck_div_max = 16;
+	fck_div_factor = 1;
+#endif
 
 	for (fck_div = fck_div_max; fck_div > fck_min_div; --fck_div) {
 		DSS_DBG_CLK("%s:%d fck_div %d\n", __FUNCTION__, __LINE__, fck_div);
-#if 1
 		fck = prate / fck_div * fck_div_factor;
-#else
-		if (fck_div_max == 16)
-			fck = prate / fck_div;
-		else
-			fck = prate / fck_div * 2;
-#endif
 
 		if (fck > max_dss_fck) {
 			DSS_DBG_CLK("%s:%d\n", __FUNCTION__, __LINE__);
