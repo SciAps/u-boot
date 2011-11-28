@@ -62,6 +62,25 @@ struct logic_panel {
 
 static struct logic_panel default_panel;
 
+static struct omap_custom_lcd_fields {
+	char *field;
+	char *format;
+	void *ptr;
+	int len;
+} omap_custom_lcd_fields[] = {
+	{ "xres", "%u", &default_panel.timing.x_res , 2},
+	{ "yres", "%u", &default_panel.timing.y_res , 2},
+	{ "left margin", "%u", &default_panel.timing.hbp, 2 },
+	{ "right margin", "%u", &default_panel.timing.hfp, 2 },
+	{ "top margin", "%u", &default_panel.timing.vbp, 2 },
+	{ "bottom margin", "%u", &default_panel.timing.vfp, 2 },
+	{ "hsync length", "%u", &default_panel.timing.hsw, 2 },
+	{ "vsync length", "%u", &default_panel.timing.vsw, 2 },
+	{ "pixclock", "%u", &default_panel.timing.pixel_clock, 4 },
+	{ "config", "%u", &default_panel.config, 4 },
+	{ "data_lines", "%u", &default_panel.data_lines, 1 },
+};
+
 ulong calc_fbsize(void) {
 	ulong size;
 	if (!default_panel.timing.x_res || !default_panel.timing.y_res)
@@ -74,7 +93,6 @@ ulong calc_fbsize(void) {
 }
 
 
-#if 1
 struct logic_panel logic_panels[] = {
 	{
 		.name	= "15",
@@ -100,6 +118,7 @@ struct logic_panel logic_panels[] = {
 		.name	= "3",
 		.config	= OMAP_DSS_LCD_TFT,
 		.acb	= 0x28,
+		.data_lines = 16,
 		.timing = {
 			/* 320 x 240, LQ036Q1DA01 */
 			.x_res		= 320,
@@ -113,55 +132,182 @@ struct logic_panel logic_panels[] = {
 			.vbp		= 4,
 		},
 	},
+	{
+		.name	= "7",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 640 x 480, LQ10D368 */
+			.x_res		= 640,
+			.y_res		= 480,
+			.pixel_clock	= 27000,
+			.hfp		= 24,
+			.hsw		= 48,
+			.hbp		= 135,
+			.vfp		= 34,
+			.vsw		= 1,
+			.vbp		= 34,
+		},
+	},
+	{
+		.name	= "5",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 640 x 240, LQ036Q1DA01 */
+			.x_res		= 640,
+			.y_res		= 480,
+			.pixel_clock	= 27000,
+			.hfp		= 24,
+			.hsw		= 48,
+			.hbp		= 135,
+			.vfp		= 34,
+			.vsw		= 1,
+			.vbp		= 34,
+		},
+	},
+	{
+		.name	= "2",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 800 x 600, LQ121S1DG31 */
+			.x_res		= 800,
+			.y_res		= 600,
+			.pixel_clock	= 42000,
+			.hfp		= 120,
+			.hsw		= 5,
+			.hbp		= 88-4-2,
+			.vfp		= 100,
+			.vsw		= 4,
+			.vbp		= 21-1,
+		},
+	},
+	{
+		.name	= "vga",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 640 x 480, VGA on DVI */
+			.x_res		= 640,
+			.y_res		= 480,
+			.pixel_clock	= 24685,
+			.hfp		= 16,
+			.hsw		= 96,
+			.hbp		= 48,
+			.vfp		= 10,
+			.vsw		= 2,
+			.vbp		= 33,
+		},
+	},
+	{
+		.name	= "svga",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 800 x 600, SVGA on DVI */
+			.x_res		= 800,
+			.y_res		= 600,
+			.pixel_clock	= 42000,
+			.hfp		= 120,
+			.hsw		= 5,
+			.hbp		= 88-4-2,
+			.vfp		= 100,
+			.vsw		= 4,
+			.vbp		= 21-1,
+		},
+	},
+	{
+		.name	= "xga",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 1024 x 769, XGA on DVI */
+			.x_res		= 1024,
+			.y_res		= 768,
+			.pixel_clock	= 61714,
+			.hfp		= 24,
+			.hsw		= 41,
+			.hbp		= 160,
+			.vfp		= 3,
+			.vsw		= 6,
+			.vbp		= 29,
+		},
+	},
+	{
+		.name	= "sxga",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 1280 x 1024, SXGA on DVI */
+			.x_res		= 1280,
+			.y_res		= 1024,
+			.pixel_clock	= 108000,
+			.hfp		= 81,
+			.hsw		= 41,
+			.hbp		= 209,
+			.vfp		= 6,
+			.vsw		= 6,
+			.vbp		= 21,
+		},
+	},
+	{
+		.name	= "uxga",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 1600 x 1200, UXGA on DVI */
+			.x_res		= 1600,
+			.y_res		= 1200,
+			.pixel_clock	= 172800,
+			.hfp		= 64,
+			.hsw		= 192,
+			.hbp		= 304,
+			.vfp		= 46,
+			.vsw		= 3,
+			.vbp		= 1,
+		},
+	},
+	{
+		.name	= "720p",
+		.config	= OMAP_DSS_LCD_TFT,
+		.acb	= 0x28,
+		.data_lines = 16,
+		.timing = {
+			/* 1280 x 720, 720P on DVI */
+			.x_res		= 1280,
+			.y_res		= 720,
+			.pixel_clock	= 72000,
+			.hfp		= 110,
+			.hsw		= 40,
+			.hbp		= 220,
+			.vfp		= 5,
+			.vsw		= 5,
+			.vbp		= 20,
+		},
+	},
 };
 
-#else
-struct logic_screen logic_screens[] = {
-	{
-		/* Timing for the 4.3" display */
-		.name	= "15",
-		.width	= 480,
-		.height	= 272,
-		.bpp	= 16,
-		.bpix	= LCD_COLOR16,
-		.cfg = {
-			.timing_h	= 0x00100229, /* DISPC_TIMING_H */
-			.timing_v	= 0x0030020a, /* DISPC_TIMING_V */
-			.pol_freq	= 0x0003b000, /* DISPC_POL_FREQ */
-			.divisor	= 0x0001000b, /* DISPC_DIVISOR */
-			.lcd_size	= 0x010f01df, /* DISPC_SIZE_LCD */
-			.panel_type	= 0x01, /* Active Matrix TFT */
-			.data_lines	= 0x01, /* 1=RGB16, 2=RGB18, 3=RGB24 */
-			.load_mode	= 0x02, /* Frame Mode */
-			.panel_color	= 0x00000000, /* black */
-		}
-	},
-	{
-		/* Timing for the 3.6" display */
-		.name	= "3",
-		.width	= 320,
-		.height	= 240,
-		.bpp	= 16,
-		.bpix	= LCD_COLOR16,
-		.cfg = {
-			.timing_h	= 0x01401414, /* DISPC_TIMING_H */
-			.timing_v	= 0x00300302, /* DISPC_TIMING_V */
-			.pol_freq	= 0x00000000, /* DISPC_POL_FREQ */
-			.divisor	= 0x00010004, /* DISPC_DIVISOR */
-			.lcd_size	= 0x00ef013f, /* DISPC_SIZE_LCD */
-			.panel_type	= 0x01, /* Active Matrix TFT */
-			.data_lines	= 0x01, /* 1=RGB16, 2=RGB18, 3=RGB24 */
-			.load_mode	= 0x02, /* Frame Mode */
-			.panel_color	= 0x00000000, /* black */
-		}
-	},
-};
-#endif
+
 
 static struct logic_panel *find_panel(void)
 {
+	char *p, *q, *r;
+	struct omap_custom_lcd_fields *f;
 	char *panel;
-	int i;
+	char panel_name[128];
+	unsigned int val;
+	int err = 0, i;
+	int last, data_lines;
+	int found = 0;
 
 	panel = getenv("display");
 	if (!panel) {
@@ -169,13 +315,78 @@ static struct logic_panel *find_panel(void)
 		return NULL;
 	}
 
-	for (i=0; i<ARRAY_SIZE(logic_panels); ++i)
-		if (!strcmp(panel, logic_panels[i].name))
-			break;
+	if (strchr(panel, ':')) {
+		default_panel = logic_panels[0];
+		default_panel.name = "custom";
+		default_panel.data_lines = 16;
+		strcpy(panel_name, panel);
+		found = 1;
+		last = 0;
+		p = panel_name;
+		for (i=0, f=omap_custom_lcd_fields; !last && i<ARRAY_SIZE(omap_custom_lcd_fields); ++i, ++f) {
+			q = strchr(p, ':');
+			if (q)
+				*q = '\0';
+			else
+				last = 1;
 
-	if (i < ARRAY_SIZE(logic_panels)) {
-		printf("Found '%s' display panel\n", panel);
-		default_panel = logic_panels[i];
+			val = simple_strtoul(p, &r, 0);
+
+			if (q && (r != q)) {
+				printf("Custom display field '%s' value of '%s' invalid\n", f->field, p);
+				err = 1;
+				break;
+			}
+			switch(f->len) {
+			case 1: {
+					u8 *ptr = f->ptr;
+					*ptr = val;
+				}
+				break;
+			case 2: {
+					u16 *ptr = f->ptr;
+					*ptr = val;
+				}
+				break;
+			default:
+			case 4: {
+					u32 *ptr = f->ptr;
+					*ptr = val;
+				}
+				break;
+			}
+			p = q+1;
+		}
+		strcpy(panel_name, default_panel.name);
+	} else {
+		/* Copy panel name and null-terminate it */
+		strncpy(panel_name, panel, sizeof(panel_name));
+		panel_name[sizeof(panel_name)-1] = '\0';
+
+		/* Search for trailing "-dvi" or "-hdmi", if found
+		* set data_lines and strip off trailing specifier */
+		data_lines = 16;
+		if ((p = strrchr(panel_name, '-')) != NULL) {
+			if (!strcmp(p+1, "dvi")) {
+				data_lines = 16;
+				*p='\0';
+			} else if (!strcmp(p+1, "hdmi")) {
+				data_lines = 24;
+				*p='\0';
+			}
+		}
+		
+		for (i=0; i<ARRAY_SIZE(logic_panels); ++i)
+			if (!strcmp(panel_name, logic_panels[i].name)) {
+				default_panel = logic_panels[i];
+				default_panel.data_lines = data_lines;
+				found = 1;
+				break;
+			}
+	}
+
+	if (found) {
+		printf("Found '%s' display panel\n", panel_name);
 		panel_info.vl_col = default_panel.timing.x_res;
 		panel_info.vl_row = default_panel.timing.y_res;
 		if (default_panel.data_lines == 16)
