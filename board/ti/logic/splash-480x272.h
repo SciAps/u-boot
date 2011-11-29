@@ -1,3 +1,18 @@
+/*
+ * Splash Screen Image
+ *
+ * To update this image, perform the following steps to convert your
+ * image to RGB565, compress with gzip, and format as C code.
+ *  1) Open your image in GIMP
+ *  2) Select File -> Save as...
+ *  3) Enter splash.bmp and select Save
+ *  4) On the "Save as BMP" dialog, open the "Advanced Options" section
+ *  5) Select "R5 G6 B5" under the "16 bits" section and select Save
+ *  6) At a prompt, run the following commands:
+ *       gzip splash.bmp
+ *       xxd -i splash.bmp.gz > splash.h
+ *  7) Replace the code below with the contents of splash.h
+ */
 unsigned char splash_bmp_gz[] = {
   0x1f, 0x8b, 0x08, 0x08, 0xbe, 0x32, 0x9b, 0x4e, 0x00, 0x03, 0x73, 0x70,
   0x6c, 0x61, 0x73, 0x68, 0x2e, 0x62, 0x6d, 0x70, 0x00, 0xed, 0xdd, 0x4f,
