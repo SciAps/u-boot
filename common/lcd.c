@@ -794,14 +794,14 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 
 	bpix = NBITS(panel_info.vl_bpix);
 
-	if ((bpix != 1) && (bpix != 8) && (bpix != 16)) {
+	if ((bpix != 1) && (bpix != 8) && (bpix != 16) && (bpix != 32)) {
 		printf ("Error: %d bit/pixel mode, but BMP has %d bit/pixel\n",
 			bpix, bmp_bpix);
 		return 1;
 	}
 
 	/* We support displaying 8bpp BMPs on 16bpp LCDs */
-	if (bpix != bmp_bpix && (bmp_bpix != 8 || bpix != 16)) {
+	if (bpix != bmp_bpix && (bmp_bpix != 8 || bpix != 16) && (bmp_bpix != 16 || bpix != 32)) {
 		printf ("Error: %d bit/pixel mode, but BMP has %d bit/pixel\n",
 			bpix,
 			le16_to_cpu(bmp->header.bit_count));
@@ -880,6 +880,7 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		y = max(0, (panel_info.vl_row - height) / 2);
 	else if (y < 0)
 		y = max(0, panel_info.vl_row - height + y + 1);
+
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
 	if ((x + width)>pwidth)
@@ -920,22 +921,42 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 
 #if defined(CONFIG_BMP_16BPP)
 	case 16:
-		for (i = 0; i < height; ++i) {
-			WATCHDOG_RESET();
-			for (j = 0; j < width; j++) {
-#if defined(CONFIG_ATMEL_LCD_BGR555)
-				*(fb++) = ((bmap[0] & 0x1f) << 2) |
-					(bmap[1] & 0x03);
-				*(fb++) = (bmap[0] & 0xe0) |
-					((bmap[1] & 0x7c) >> 2);
-				bmap += 2;
-#else
-				*(fb++) = *(bmap++);
-				*(fb++) = *(bmap++);
-#endif
+		if (bpix == 32) {
+			for (i = 0; i < height; ++i) {
+				WATCHDOG_RESET();
+				for (j = 0; j < width; j++) {
+					uint32_t color;
+
+					/* Convert bmp from 16bpp->32bpp */
+					/* Red */
+					color = (bmap[1] << 8) | bmap[0];
+					fb[2] = (color >> 8) & 0xf8;
+					fb[1] = (color >> 3) & 0xfc;
+					fb[0] = (color << 3) & 0xf8;
+					fb += 4;
+					bmap+=2;
+				}
+				bmap += (padded_line - width) * 2;
+				fb   -= (width * 4 + lcd_line_length);
 			}
-			bmap += (padded_line - width) * 2;
-			fb   -= (width * 2 + lcd_line_length);
+		} else {
+			for (i = 0; i < height; ++i) {
+				WATCHDOG_RESET();
+				for (j = 0; j < width; j++) {
+#if defined(CONFIG_ATMEL_LCD_BGR555)
+					*(fb++) = ((bmap[0] & 0x1f) << 2) |
+						(bmap[1] & 0x03);
+					*(fb++) = (bmap[0] & 0xe0) |
+						((bmap[1] & 0x7c) >> 2);
+					bmap += 2;
+#else
+					*(fb++) = *(bmap++);
+					*(fb++) = *(bmap++);
+#endif
+				}
+				bmap += (padded_line - width) * 2;
+				fb   -= (width * 2 + lcd_line_length);
+			}
 		}
 		break;
 #endif /* CONFIG_BMP_16BPP */
@@ -944,6 +965,10 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 		break;
 	};
 
+#ifdef CONFIG_ARM
+	/* Flush the cache to make sure display tracks content of memory */
+	flush_cache(0, ~0);
+#endif
 	return (0);
 }
 #endif

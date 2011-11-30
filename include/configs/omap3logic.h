@@ -183,6 +183,8 @@
 #define CONFIG_CMD_CACHE	/* Cache control		*/
 #define CONFIG_CMD_TIME		/* time command			*/
 
+#define CONFIG_L2_OFF			1 /* Keep L2 Cache Disabled */
+
 #define BOARD_LATE_INIT
 
 #undef CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
@@ -526,6 +528,7 @@
 #define CONFIG_VIDEO_BMP_GZIP
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE (2 << 20)
 #define CONFIG_SPLASH_SCREEN
+#define CONFIG_SPLASH_SCREEN_ALIGN	1
 #define CONFIG_SYS_WHITE_ON_BLACK	/* White characters on black background */
 
 /* Have board_set_lcdmem() function */

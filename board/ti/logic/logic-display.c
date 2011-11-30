@@ -19,15 +19,9 @@ void *lcd_base;                  /* initialized in lcd.c */
 void *lcd_console_address;       /* where is this initialized? */
 short console_col = 0;
 short console_row = 0;
-#if 1
+
 vidinfo_t panel_info; /* Filled in by find_screen */
-#else
-vidinfo_t panel_info = {
-	.vl_col = 480,
-	.vl_row = 272,
-	.vl_bpix = LCD_COLOR16,
-};
-#endif
+
 void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue) {}
 
 struct omap_video_timings {
@@ -394,9 +388,6 @@ static struct logic_panel *find_panel(void)
 		else
 			panel_info.vl_bpix = LCD_COLOR24;
 		lcd_line_length = (panel_info.vl_col * NBITS (panel_info.vl_bpix)) / 8;
-#if 0
-		printf("%s:%d lcd_line_length %d\n", __FUNCTION__, __LINE__, lcd_line_length);
-#endif
 		return &default_panel;
 	}
 	printf("display='%s' does not describe a valid screen!\n", panel);
@@ -406,7 +397,7 @@ static struct logic_panel *find_panel(void)
 /* Return size of largest framebuffer (so system can reserve memory on start) */
 ulong board_lcd_setmem(ulong addr)
 {
-	return 1280*720*3;	/* 720p at 24bpp */
+	return 1600*1200*4;	/* sxga at 24bpp(w 8bits of alpha) */
 }
 
 void touchup_display_env(void)
@@ -414,9 +405,9 @@ void touchup_display_env(void)
 	// enable the splash screen
 	char splash_bmp_gz_str[12];
 
-	printf("%s\n", __FUNCTION__);
 	sprintf(splash_bmp_gz_str, "0x%08X", (unsigned int)splash_bmp_gz);
 	setenv("splashimage", splash_bmp_gz_str);
+	setenv("splashpos", "m,m");
 }
 
 void lcd_setup_pinmux(int data_lines)
@@ -514,7 +505,7 @@ void lcd_ctrl_init(void *lcdbase)
 	if (panel->data_lines == 16)
 		dss_panel.data_lines = 1;
 	else if (panel->data_lines == 24)
-		dss_panel.data_lines = 2;
+		dss_panel.data_lines = 3;
 	else {
 		printf("%s: Invalid data_lines!\n", __FUNCTION__);
 		memset(&panel_info, 0, sizeof(panel_info));
@@ -531,14 +522,13 @@ void lcd_ctrl_init(void *lcdbase)
 	writel((ulong)lcdbase, &dispc->gfx_ba0); /* frame buffer address */
 	writel((ulong)lcdbase, &dispc->gfx_ba1); /* frame buffer address */
 	writel(dss_panel.lcd_size, &dispc->gfx_size); /* size - same as LCD */
+	if (panel->data_lines == 16)
+		writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
+	else
 #if 1
-	writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
+		writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
 #else
-	writel((1<<0)|(6<<1)|(1<<5), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
-#endif
-
-#if 0
-	touchup_display_env();
+		writel((1<<0)|(8<<1)|(1<<7), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
 #endif
 }
 
@@ -583,14 +573,6 @@ void lcd_enable(void)
 	 * backlight 154 (torpedo); 8 (som)
 	 */
 
-#if 0
-	/* Kill SOM LCD_BACKLIGHT_PWR */
-	if (!omap_request_gpio(8)) {
-		omap_set_gpio_direction(8, 0);
-		omap_set_gpio_dataout(8, 0);
-	}
-#endif
-	 
 	/* turn on LCD_PANEL_PWR */
 	if (!omap_request_gpio(gpio_panel_pwr)) {
 		omap_set_gpio_direction(gpio_panel_pwr, 0);
@@ -879,13 +861,21 @@ int do_draw_test(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 			fb_var.blue.length = 6;
 			fb_var.green.offset = 0;
 			fb_var.green.length = 5;
+		} else  if (panel_info.vl_bpix == LCD_COLOR24) {
+			fb_var.bits_per_pixel = 32;
+			fb_var.red.offset = 16;
+			fb_var.red.length = 8;
+			fb_var.blue.offset = 8;
+			fb_var.blue.length = 8;
+			fb_var.green.offset = 0;
+			fb_var.green.length = 8;
 		}
 		fb_var.line_length = fb_var.xres * (fb_var.bits_per_pixel / 8);
 		fb_ptr = (void *)gd->fb_base;
 		fb_stride = fb_var.line_length;
 		fb_size = fb_stride * fb_var.yres;
-  fb_max_x = fb_var.xres;
-  fb_max_y = fb_var.yres;
+		fb_max_x = fb_var.xres;
+		fb_max_y = fb_var.yres;
 		scribble_frame_buffer();
 	}
 	return 0;
