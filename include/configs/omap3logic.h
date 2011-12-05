@@ -296,8 +296,9 @@
 		"${otherbootargs};" \
 		"run addmtdparts; " \
 		"run vrfb_arg\0" \
+	"mmcrootdevice=/dev/mmcblk0p2\0" \
 	"mmcargs=run setconsole; setenv bootargs console=${console} " \
-		"root=/dev/mmcblk0p2 rw " \
+		"root=${mmcrootdevice} rw " \
 		"rootfstype=ext3 rootwait\0" \
 	"rootfstype=yaffs2\0" \
 	"nandargs=run setconsole; setenv bootargs console=${console} " \
@@ -306,9 +307,13 @@
 	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
 	"bootscript=echo 'Running bootscript from mmc ...'; " \
 		"source ${loadaddr}\0" \
-	"loaduimage=fatload mmc 0 ${loadaddr} ${bootfile}\0" \
+	"loaduimage=mmc init; " \
+		"fatload mmc 0 ${loadaddr} ${bootfile}\0" \
 	"mmcboot=echo 'Booting from mmc ...'; " \
 		"run mmcargs; " \
+		"run common_bootargs; " \
+		"run dump_bootargs; " \
+		"run loaduimage; " \
 		"bootm ${loadaddr}\0" \
 	"nandkerneloffset=0x280000\0" \
 	"nandkernelsize=0x300000\0" \
@@ -347,8 +352,7 @@
 		"run ramargs; " \
 		"run common_bootargs; " \
 		"run dump_bootargs; " \
-		"mmc init; " \
-		"fatload mmc 0 ${loadaddr} ${bootfile}; "\
+		"run loaduimage; " \
 		"fatload mmc 0 ${ramdiskaddr} ${ramdiskimage}; "\
 		"bootm ${loadaddr} ${ramdiskaddr}\0" \
 	"ramboot=echo 'Booting kernel/ramdisk rootfs from tftp...'; " \
@@ -363,31 +367,6 @@
 		"run common_bootargs; " \
 		"run dump_bootargs; " \
 		"bootm ${loadaddr} ${ramdiskaddr}\0"
-
-/* Boot commands for TI PSP image on EVM boards */
-#define PSPBOOT_ENV \
-	"psp_loadaddr=0x80000000\0" \
-	"psp_initrdaddr=0x81600000\0" \
-	"psp_ramargs=run setconsole; setenv bootargs root=/dev/ram0 rw mem=128M console=${console} initrd=${psp_initrdaddr},16M ramdisk_size=16384 ${other_psp_rambootargs}\0" \
-	"psp_ramboot=run psp_ramargs; tftpboot ${psp_loadaddr} ${bootfile}; tftpboot ${psp_initrdaddr} ramdisk.gz; bootm ${psp_loadaddr}\0"
-
-/* Boot commands for Logic Demo BSP image */
-#define DEMOBOOT_ENV \
-	"demo_loadaddr=0x80000000\0" \
-	"demo_initrdaddr=0x81600000\0" \
-	"demo_initrdsize=32M\0" \
-	"demo_ramdisk_size=32768\0" \
-	"demo_kernelimage=demo-uImage\0" \
-	"demo_ramdiskimage=demo-ramdisk.gz\0" \
-	"kernel_memsize=mem=128M\0" \
-	"demo_ramargs=run setconsole; setenv bootargs root=/dev/ram0 rw ${kernel_memsize} console=${console} initrd=${demo_initrdaddr},${demo_initrdsize} ramdisk_size=${demo_ramdisk_size} ${other_demo_ramargs}\0" \
-	"demo_boot=echo 'Booting demo kernel/ramdisk rootfs from mmc...'; " \
-		"mmc init; " \
-		"run demo_ramargs; " \
-		"run dump_bootargs; "\
-		"fatload mmc 0 ${demo_loadaddr} ${demo_kernelimage}; " \
-		"fatload mmc 0 ${demo_initrdaddr} ${demo_ramdiskimage}; " \
-		"bootm ${demo_loadaddr}\0"
 
 #define CONFIG_BOOTCOMMAND \
 	"run autoboot"
