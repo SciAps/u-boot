@@ -277,7 +277,7 @@ static __u32 get_fatent (fsdata *mydata, __u32 entry)
  */
 static int
 get_cluster (fsdata *mydata, __u32 clustnum, __u8 *buffer,
-	     unsigned long size)
+	unsigned long size, __u8 *start_buffer)
 {
 	__u32 idx = 0;
 	__u32 startsect;
@@ -291,24 +291,52 @@ get_cluster (fsdata *mydata, __u32 clustnum, __u8 *buffer,
 
 	debug("gc - clustnum: %d, startsect: %d\n", clustnum, startsect);
 
-	if (disk_read(startsect, size / FS_BLOCK_SIZE, buffer) < 0) {
-		debug("Error reading data\n");
-		return -1;
-	}
-	if (size % FS_BLOCK_SIZE) {
-		__u8 tmpbuf[FS_BLOCK_SIZE];
+	if (start_buffer) {
+		while (size >= FS_BLOCK_SIZE) {
+			if (disk_read(startsect, 1, buffer) < 0) {
+				debug("Error reading data\n");
+				return -1;
+			}
+			buffer += FS_BLOCK_SIZE;
+			startsect++;
+			size -= FS_BLOCK_SIZE;
+			lcd_percent_update(buffer - start_buffer);
+		}
+		if (size % FS_BLOCK_SIZE) {
+			__u8 tmpbuf[FS_BLOCK_SIZE];
 
-		idx = size / FS_BLOCK_SIZE;
-		if (disk_read(startsect + idx, 1, tmpbuf) < 0) {
+			idx = size / FS_BLOCK_SIZE;
+			if (disk_read(startsect, 1, tmpbuf) < 0) {
+				debug("Error reading data\n");
+				return -1;
+			}
+			memcpy(buffer, tmpbuf, size % FS_BLOCK_SIZE);
+
+			buffer += size % FS_BLOCK_SIZE;
+			lcd_percent_update(buffer - start_buffer);
+			return 0;
+		}
+	} else {
+		if (disk_read(startsect, size / FS_BLOCK_SIZE, buffer) < 0) {
 			debug("Error reading data\n");
 			return -1;
 		}
-		buffer += idx * FS_BLOCK_SIZE;
+		lcd_percent_update(buffer + (size & ~FS_BLOCK_SIZE) - start_buffer);
+		if (size % FS_BLOCK_SIZE) {
+			__u8 tmpbuf[FS_BLOCK_SIZE];
 
-		memcpy(buffer, tmpbuf, size % FS_BLOCK_SIZE);
-		return 0;
+			idx = size / FS_BLOCK_SIZE;
+			if (disk_read(startsect + idx, 1, tmpbuf) < 0) {
+				debug("Error reading data\n");
+				return -1;
+			}
+			buffer += idx * FS_BLOCK_SIZE;
+
+			memcpy(buffer, tmpbuf, size % FS_BLOCK_SIZE);
+			lcd_percent_update(buffer + size - start_buffer);
+			return 0;
+		}
 	}
-
 	return 0;
 }
 
@@ -326,7 +354,9 @@ get_contents (fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 	__u32 curclust = START(dentptr);
 	__u32 endclust, newclust;
 	unsigned long actsize;
+	__u8 *start_buffer = buffer;
 
+	lcd_percent_init(filesize);
 	debug("Filesize: %ld bytes\n", filesize);
 
 	if (maxsize > 0 && filesize > maxsize)
@@ -348,6 +378,7 @@ get_contents (fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 				debug("Invalid FAT entry\n");
 				return gotsize;
 			}
+			lcd_percent_update(actsize);
 			endclust = newclust;
 			actsize += bytesperclust;
 		}
@@ -356,7 +387,7 @@ get_contents (fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 		actsize -= bytesperclust;
 
 		/* get remaining clusters */
-		if (get_cluster(mydata, curclust, buffer, (int)actsize) != 0) {
+		if (get_cluster(mydata, curclust, buffer, (int)actsize, start_buffer) != 0) {
 			printf("Error reading cluster\n");
 			return -1;
 		}
@@ -366,20 +397,23 @@ get_contents (fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 		filesize -= actsize;
 		buffer += actsize;
 		actsize = filesize;
-		if (get_cluster(mydata, endclust, buffer, (int)actsize) != 0) {
+		lcd_percent_update(gotsize);
+		if (get_cluster(mydata, endclust, buffer, (int)actsize, start_buffer) != 0) {
 			printf("Error reading cluster\n");
 			return -1;
 		}
 		gotsize += actsize;
+		lcd_percent_update(gotsize);
 		return gotsize;
 getit:
-		if (get_cluster(mydata, curclust, buffer, (int)actsize) != 0) {
+		if (get_cluster(mydata, curclust, buffer, (int)actsize, start_buffer) != 0) {
 			printf("Error reading cluster\n");
 			return -1;
 		}
 		gotsize += (int)actsize;
 		filesize -= actsize;
 		buffer += actsize;
+		lcd_percent_update(gotsize);
 
 		curclust = get_fatent(mydata, endclust);
 		if (CHECK_CLUST(curclust, mydata->fatsize)) {
@@ -473,7 +507,7 @@ get_vfatname (fsdata *mydata, int curclust, __u8 *cluster,
 		}
 
 		if (get_cluster(mydata, curclust, get_vfatname_block,
-				mydata->clust_size * SECTOR_SIZE) != 0) {
+					mydata->clust_size * SECTOR_SIZE, NULL) != 0) {
 			debug("Error: reading directory block\n");
 			return -1;
 		}
@@ -555,7 +589,7 @@ static dir_entry *get_dentfromdir (fsdata *mydata, int startsect,
 		int i;
 
 		if (get_cluster(mydata, curclust, get_dentfromdir_block,
-				mydata->clust_size * SECTOR_SIZE) != 0) {
+					mydata->clust_size * SECTOR_SIZE, NULL) != 0) {
 			debug("Error: reading directory block\n");
 			return NULL;
 		}

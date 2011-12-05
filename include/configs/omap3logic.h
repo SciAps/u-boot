@@ -513,4 +513,7 @@
 /* Have board_set_lcdmem() function */
 #define CONFIG_BOARD_LCD_SETMEM
 
+/* Have percent ouptut function for LCD */
+#define CONFIG_LCD_PERCENT
+
 #endif /* __CONFIG_H */

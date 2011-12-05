@@ -735,6 +735,11 @@ void show_boot_progress(int val);
 ulong board_lcd_setmem (ulong addr);
 #endif
 
+#ifdef CONFIG_LCD_PERCENT
+extern void lcd_percent_init(int total_size);
+extern void lcd_percent_update(int size);
+#endif
+
 /* Multicore arch functions */
 #ifdef CONFIG_MP
 int cpu_status(int nr);

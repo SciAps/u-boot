@@ -120,6 +120,8 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 		priv_nand->bbt = NULL;
 	}
 
+	lcd_percent_init(erase_length);
+
 	for (erased_length = 0;
 	     erased_length < erase_length;
 	     erase.addr += meminfo->erasesize) {
@@ -137,6 +139,8 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 
 				if (!opts->spread)
 					erased_length++;
+
+				lcd_percent_update(erased_length);
 
 				continue;
 
@@ -156,6 +160,7 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 			       mtd_device, result);
 			continue;
 		}
+
 
 		/* format for JFFS2 ? */
 		if (opts->jffs2 && chip->ecc.layout->oobavail >= 8) {
@@ -197,9 +202,12 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 					       erase.addr);
 			}
 		}
+		lcd_percent_update(erased_length);
 	}
+	lcd_percent_update(erased_length);
 	if (!opts->quiet)
 		printf("\n");
+
 
 	if (nand_block_bad_old) {
 		struct nand_chip *priv_nand = meminfo->priv;
@@ -458,7 +466,7 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 			u_char *buffer, int withoob)
 {
 	int rval = 0, blocksize;
-	size_t left_to_write = *length;
+	size_t left_to_write = *length, total_to_write;
 	u_char *p_buffer = buffer;
 	int need_skip;
 
@@ -512,6 +520,9 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 			offset, rval);
 		return rval;
 	}
+
+	total_to_write = left_to_write;
+	lcd_percent_init(total_to_write);
 
 	while (left_to_write > 0) {
 		size_t block_offset = offset & (nand->erasesize - 1);
@@ -574,7 +585,10 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		}
 
 		left_to_write -= write_size;
+		lcd_percent_update(total_to_write - left_to_write);
 	}
+
+	lcd_percent_update(total_to_write);
 
 	return 0;
 }
@@ -597,7 +611,7 @@ int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		       u_char *buffer)
 {
 	int rval;
-	size_t left_to_read = *length;
+	size_t left_to_read = *length, total_to_read;
 	u_char *p_buffer = buffer;
 	int need_skip;
 
@@ -624,6 +638,9 @@ int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 			offset, rval);
 		return rval;
 	}
+
+	total_to_read = left_to_read;
+	lcd_percent_init(total_to_read);
 
 	while (left_to_read > 0) {
 		size_t block_offset = offset & (nand->erasesize - 1);
@@ -654,7 +671,11 @@ int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		left_to_read -= read_length;
 		offset       += read_length;
 		p_buffer     += read_length;
+
+		lcd_percent_update(total_to_read - left_to_read);
 	}
+
+	lcd_percent_update(total_to_read);
 
 	return 0;
 }

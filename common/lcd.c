@@ -35,6 +35,7 @@
 #include <stdarg.h>
 #include <linux/types.h>
 #include <stdio_dev.h>
+#include <div64.h>
 #include <malloc.h>
 #if defined(CONFIG_POST)
 #include <post.h>
@@ -218,101 +219,109 @@ void lcd_printf(const char *fmt, ...)
 	lcd_puts(buf);
 }
 
-int anchor_row, anchor_col;
+#define NUM_ANCHORS 5
+struct anchors {
+	int row, col;
+} anchors[NUM_ANCHORS];
 
-int do_echo_lcd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+void output_lcd_string(char *p)
 {
-	int i;
+	char c;
 	int row,col;
 	int tmp;
 	char *s, *r;
+	int idx;
 
-	for (i = 1; i < argc; i++) {
-		char *p = argv[i], c;
-
-		{
-			int j;
-			for (j=0; argv[i][j]; ++j)
-				printf("%02x ", argv[i][j]);
-			printf("\n");
-		}
-
-		if (i > 1)
-			_lcd_putc(' ');
-
-		while ((c = *p++) != '\0') {
-			if (c == '/' && *p) {
-				switch(*p) {
-				case 'g':
-					/* Goto the anchor point */
-					console_row = anchor_row;
-					console_col = anchor_col;
-					break;
-				case 'a':
-					/* Set the anchor to current point */
-					anchor_row = console_row;
-					anchor_col = console_col;
-					break;
-				case 'A':
-					/* Goto the lcd_anchor in environment */
-					s = getenv("lcd_anchor");
-					if (s) {
-						row = simple_strtoul(s, &r, 0);
-						if (r && *r==',') {
-							col = simple_strtoul(r+1, &r, 0);
-							if (r && !*r) {
-								if (row >= CONSOLE_ROWS)
-									row = CONSOLE_ROWS - 1;
-								if (row >= CONSOLE_COLS)
-									row = CONSOLE_COLS - 1;
-								console_row = row;
-								console_col = col;
-							}
+	while ((c = *p++) != '\0') {
+		if (c == '/' && *p) {
+			switch(*p) {
+			case 'g':
+				/* Set cursor to anchor idx+'A' */
+				if (p[1]) {
+					idx = p[1]-'A';
+					if (idx >= 0 && idx < NUM_ANCHORS) {
+						console_row = anchors[idx].row;
+						console_col = anchors[idx].col;
+					}
+					p++;
+				} else {
+					_lcd_putc('/');
+					_lcd_putc(*p);
+				}
+				break;
+			case 'a':
+				/* Set anchor idx+'A' to cursor */
+				if (p[1]) {
+					idx = p[1]-'A';
+					if (idx >= 0 && idx < NUM_ANCHORS) {
+						anchors[idx].row = console_row;
+						anchors[idx].col = console_col;
+					}
+					p++;
+				} else {
+					_lcd_putc('/');
+					_lcd_putc(*p);
+				}
+				break;
+			case 'A':
+				/* Goto the lcd_anchor in environment */
+				s = getenv("lcd_anchor");
+				if (s) {
+					row = simple_strtoul(s, &r, 0);
+					if (r && *r==',') {
+						col = simple_strtoul(r+1, &r, 0);
+						if (r && !*r) {
+							if (row >= CONSOLE_ROWS)
+								row = CONSOLE_ROWS - 1;
+							if (row >= CONSOLE_COLS)
+								row = CONSOLE_COLS - 1;
+							console_row = row;
+							console_col = col;
 						}
 					}
-					break;
-				case 'p':
-					/* Cursor position, pos+'A' */
-					if (p[1] && p[2]) {
-						console_row = p[1]-'A';
-						console_col = p[2]-'A';
-						p+=2;
-					} else {
-						_lcd_putc('\\');
-						_lcd_putc(*p);
-					}
-					break;
-				case 'i':
-					/* Invert video */
-					tmp = lcd_color_fg;
-					lcd_color_fg = lcd_color_bg;
-					lcd_color_bg = tmp;
-					break;
-				case 'b':
-					/* Back up the display */
-					_lcd_putc('\b');
-					break;
-				case 'r':
-					/* Carriage return */
-					_lcd_putc('\r');
-					break;
-				case 'n':
-					/* Line feed */
-					_lcd_putc('\n');
-					break;
-				case 'k':
-					/* Clear to end of line */
-					_lcd_putc('\f');
-					break;
-				default:
-					_lcd_putc('\\');
-					_lcd_putc(*p);
-					break;
 				}
-				p++;
-			} else {
-				_lcd_putc(c);
+				break;
+			case 'p':
+				/* Cursor position, pos+'A' */
+				if (p[1] && p[2]) {
+					console_row = p[1]-'A';
+					console_col = p[2]-'A';
+					p+=2;
+				} else {
+					_lcd_putc('/');
+					_lcd_putc(*p);
+				}
+				break;
+			case 'i':
+				/* Invert video */
+				tmp = lcd_color_fg;
+				lcd_color_fg = lcd_color_bg;
+				lcd_color_bg = tmp;
+				break;
+			case 'b':
+				/* Back up the display */
+				_lcd_putc('\b');
+				break;
+			case 'r':
+				/* Carriage return */
+				_lcd_putc('\r');
+				break;
+			case 'n':
+				/* Line feed */
+				_lcd_putc('\n');
+				break;
+			case 'k':
+				/* Clear to end of line */
+				_lcd_putc('\f');
+				break;
+			default:
+				_lcd_putc('/');
+				_lcd_putc(*p);
+				break;
 			}
+			p++;
+		} else {
+			_lcd_putc(c);
 		}
 	}
 
@@ -320,6 +329,17 @@ int do_echo_lcd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/* Flush the cache to make sure display tracks content of memory */
 	flush_cache(0, ~0);
 #endif
+}
+
+int do_echo_lcd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	int i;
+
+	for (i = 1; i < argc; i++) {
+		if (i > 1)
+			_lcd_putc(' ');
+		output_lcd_string(argv[i]);
+	}
 
 	return 0;
 }
@@ -330,8 +350,8 @@ U_BOOT_CMD(
 	"[args..]\n"
 	"    - echo args to LCD, following escape sequences:\n"
 "      /pRC - goto row 'R' ('A'+row), column 'C' ('A'+col)\n"
-"      /a - save the current position as anchor point\n"
-"      /g - set cursor position to anchor point\n"
+"      /aN - save the current position as anchor 'N' ('A'+n)\n"
+"      /gN - set cursor position to anchor point 'N' ('A'+n)\n"
 "      /i - invert video colors\n"
 "      /b - backspace\n"
 "      /n - linefeed\n"
@@ -467,12 +487,18 @@ int drv_lcd_init (void)
 
 	lcd_base = (void *)(gd->fb_base);
 
+	printf("%s: lcd_bae %p\n", __FUNCTION__, lcd_base);
+
 	lcd_line_length = (panel_info.vl_col * NBITS (panel_info.vl_bpix)) / 8;
+
+	printf("%s: vl_col %u vl_bpix %u lcd_line_length %u\n", __FUNCTION__, panel_info.vl_col, panel_info.vl_bpix);
 
 	lcd_init (lcd_base);		/* LCD initialization */
 
 	/* lcd_init may setup panel_info structure */
 	lcd_line_length = (panel_info.vl_col * NBITS (panel_info.vl_bpix)) / 8;
+
+	printf("%s: vl_col %u vl_bpix %u lcd_line_length %u\n", __FUNCTION__, panel_info.vl_col, panel_info.vl_bpix);
 
 	/* Device initialization */
 	memset (&lcddev, 0, sizeof (lcddev));
@@ -1042,3 +1068,80 @@ static void *lcd_logo (void)
 
 /************************************************************************/
 /************************************************************************/
+
+#ifdef CONFIG_LCD_PERCENT
+#define PERCENT_BUF_SIZE 128
+static struct {
+	int size;
+	int total;
+	ulong now, when;
+	int percent;
+	char string[PERCENT_BUF_SIZE];
+} percent_data;
+
+void lcd_percent_init(int size)
+{
+	percent_data.size = 0;
+	percent_data.percent = -1;
+	percent_data.total = size;
+	percent_data.when = get_timer(0);
+	// printf("%s: total_size %d\n", __FUNCTION__, size);
+}
+
+void lcd_percent_update(int size)
+{
+	int percent;
+	char buf[PERCENT_BUF_SIZE];
+	char *src, *dst;
+	// printf("%s: size %d\n", __FUNCTION__, size);
+	if (percent_data.string[0]) {
+		unsigned long long n = size * 100ULL;
+		do_div(n, percent_data.total);
+		percent = (int)n;
+		percent_data.now = get_timer(0);
+		if (percent != percent_data.percent) {
+			if (percent == 100
+				|| !percent_data.size
+				|| ((percent_data.now - percent_data.when) > (CONFIG_SYS_HZ/4))) {
+				percent_data.percent = percent;
+				/* copy string into buf, replace '/P' with percent value */
+				dst = buf;
+				src = percent_data.string;
+				while (*src) {
+					if (src[0] == '/' && src[1] == 'P') {
+						dst += sprintf(dst, "%d", percent);
+						src+=2;
+					} else
+						*dst++ = *src++;
+				}
+				*dst = '\0';
+				output_lcd_string(buf);
+				percent_data.when = percent_data.now;
+			}
+		}
+		percent_data.size = size;
+	}
+}
+
+static int do_lcd_percent (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	if (argc > 1)
+		strncpy(percent_data.string, argv[1], sizeof(percent_data.string) - 1);
+	else
+		percent_data.string[0] = '\0';
+	return 0;
+}
+
+U_BOOT_CMD(
+	lcd_percent,	2,	1,	do_lcd_percent,
+	"setup percentage outpu on LCD",
+	" - string to print when percent changes"
+);
+#else
+void lcd_percent_init(int total_size)
+{
+}
+void lcd_percent_update(int size)
+{
+}
+#endif

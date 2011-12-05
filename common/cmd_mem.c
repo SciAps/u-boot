@@ -1264,3 +1264,50 @@ U_BOOT_CMD(
 	"[.b, .w, .l] address value delay(ms)"
 );
 #endif /* CONFIG_MX_CYCLIC */
+
+#ifdef CONFIG_CMD_HEXDUMP
+#include <linux/ctype.h>
+
+int do_hd ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	char *src;
+	int i, j, len;
+	if (argc < 3) {
+		cmd_usage(cmdtp);
+		return 1;
+	}
+	
+	src = (char *)simple_strtoul(argv[1], NULL, 16);
+	len = simple_strtoul(argv[2], NULL, 16);
+
+	while (len > 0) {
+		printf("%p  ", src);
+		j = (len > 16) ? 16 : len;
+		for (i=0; i<16; ++i) {
+			if (i < j)
+				printf("%02x ", src[i]);
+			else
+				printf("   ");
+			if (i == 7)
+				printf(" ");
+		}
+		printf("  |");
+		for (i=0; i<j; ++i) {
+			if (isascii(src[i]) && isprint(src[i]))
+				printf("%c", src[i]);
+			else
+				printf(".");
+		}
+		printf("|\n");
+		src += j;
+		len -= j;
+	}
+	return 0;
+}
+
+U_BOOT_CMD(
+	hd,	3,	1,	do_hd,
+	"hexdump a memory region",
+	"srcaddr length"
+);
+#endif
