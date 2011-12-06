@@ -316,12 +316,13 @@ void omap3_dss_dump(void)
 	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
 
 	DUMP_IT(control);
-	DUMP_IT(size_lcd);
+	DUMP_IT(config);
 	DUMP_IT(timing_h);
 	DUMP_IT(timing_v);
-	DUMP_IT(divisor);
-	DUMP_IT(config);
 	DUMP_IT(pol_freq);
+	DUMP_IT(divisor);
+	DUMP_IT(size_lcd);
+	DUMP_IT(gfx_attributes);
 	DUMP_IT(default_color0);
 	printf("%p = %08x cd_clksel_dss\n", &prcm_base->clksel_dss, readl(&prcm_base->clksel_dss));
 }

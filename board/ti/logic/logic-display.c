@@ -13,8 +13,8 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /* LCD-required members */
 int lcd_line_length;  /* initialized in lcd.c */
-int lcd_color_fg = 0xFFFF;
-int lcd_color_bg = 0x0000;
+int lcd_color_fg;
+int lcd_color_bg;
 void *lcd_base;                  /* initialized in lcd.c */
 void *lcd_console_address;       /* where is this initialized? */
 short console_col = 0;
@@ -22,7 +22,15 @@ short console_row = 0;
 
 vidinfo_t panel_info; /* Filled in by find_screen */
 
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue) {}
+void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
+{
+	/* Empty */
+}
+
+void lcd_initcolregs(void)
+{
+	/* Empty */
+}
 
 struct omap_video_timings {
 	/* Unit: pixels */
@@ -235,42 +243,6 @@ struct logic_panel logic_panels[] = {
 		},
 	},
 	{
-		.name	= "sxga",
-		.config	= OMAP_DSS_LCD_TFT,
-		.acb	= 0x28,
-		.data_lines = 16,
-		.timing = {
-			/* 1280 x 1024, SXGA on DVI */
-			.x_res		= 1280,
-			.y_res		= 1024,
-			.pixel_clock	= 108000,
-			.hfp		= 81,
-			.hsw		= 41,
-			.hbp		= 209,
-			.vfp		= 6,
-			.vsw		= 6,
-			.vbp		= 21,
-		},
-	},
-	{
-		.name	= "uxga",
-		.config	= OMAP_DSS_LCD_TFT,
-		.acb	= 0x28,
-		.data_lines = 16,
-		.timing = {
-			/* 1600 x 1200, UXGA on DVI */
-			.x_res		= 1600,
-			.y_res		= 1200,
-			.pixel_clock	= 172800,
-			.hfp		= 64,
-			.hsw		= 192,
-			.hbp		= 304,
-			.vfp		= 46,
-			.vsw		= 3,
-			.vbp		= 1,
-		},
-	},
-	{
 		.name	= "720p",
 		.config	= OMAP_DSS_LCD_TFT,
 		.acb	= 0x28,
@@ -352,13 +324,17 @@ static struct logic_panel *find_panel(void)
 			p = q+1;
 		}
 		strcpy(panel_name, default_panel.name);
+		if (calc_fbsize() > board_lcd_setmem(0)) {
+			printf("Custom screen definition too large!\n");
+			found = 0;
+		}
 	} else {
 		/* Copy panel name and null-terminate it */
 		strncpy(panel_name, panel, sizeof(panel_name));
 		panel_name[sizeof(panel_name)-1] = '\0';
 
 		/* Search for trailing "-dvi" or "-hdmi", if found
-		* set data_lines and strip off trailing specifier */
+		 * set data_lines and strip off trailing specifier */
 		data_lines = 16;
 		if ((p = strrchr(panel_name, '-')) != NULL) {
 			if (!strcmp(p+1, "dvi")) {
@@ -525,11 +501,16 @@ void lcd_ctrl_init(void *lcdbase)
 	if (panel->data_lines == 16)
 		writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
 	else
-#if 1
-		writel((1<<0)|(6<<1), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
-#else
-		writel((1<<0)|(8<<1)|(1<<7), &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
-#endif
+		writel(0x91, &dispc->gfx_attributes); /* 6=RGB16,8=RGB24 */
+
+
+	if (panel->data_lines == 16) {
+		lcd_color_fg = 0xffff;
+		lcd_color_bg = 0x0000;
+	} else {
+		lcd_color_fg = 0x00ffffff;
+		lcd_color_bg = 0x00000000;
+	}
 }
 
 void lcd_enable(void)

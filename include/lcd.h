@@ -34,6 +34,7 @@ extern char lcd_is_enabled;
 extern int lcd_line_length;
 extern int lcd_color_fg;
 extern int lcd_color_bg;
+extern int console_color_black, console_color_white;
 
 /*
  * Frame buffer memory information
@@ -260,42 +261,6 @@ void lcd_show_board_info(void);
 /* Calculate nr. of bits per pixel  and nr. of colors */
 #define NBITS(bit_code)		(1 << (bit_code))
 #define NCOLORS(bit_code)	(1 << NBITS(bit_code))
-
-/************************************************************************/
-/* ** CONSOLE CONSTANTS							*/
-/************************************************************************/
-#if LCD_BPP == LCD_MONOCHROME
-
-/*
- * Simple black/white definitions
- */
-# define CONSOLE_COLOR_BLACK	0
-# define CONSOLE_COLOR_WHITE	1	/* Must remain last / highest	*/
-
-#elif LCD_BPP == LCD_COLOR8
-
-/*
- * 8bpp color definitions
- */
-# define CONSOLE_COLOR_BLACK	0
-# define CONSOLE_COLOR_RED	1
-# define CONSOLE_COLOR_GREEN	2
-# define CONSOLE_COLOR_YELLOW	3
-# define CONSOLE_COLOR_BLUE	4
-# define CONSOLE_COLOR_MAGENTA	5
-# define CONSOLE_COLOR_CYAN	6
-# define CONSOLE_COLOR_GREY	14
-# define CONSOLE_COLOR_WHITE	15	/* Must remain last / highest	*/
-
-#else
-
-/*
- * 16bpp color definitions
- */
-# define CONSOLE_COLOR_BLACK	0x0000
-# define CONSOLE_COLOR_WHITE	0xffff	/* Must remain last / highest	*/
-
-#endif /* color definitions */
 
 /************************************************************************/
 #ifndef PAGE_SIZE
