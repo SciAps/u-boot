@@ -19,8 +19,6 @@
  * MA 02111-1307 USA
  */
 
-/* GPIO i2c code to access at88 chip */
-
 typedef enum {
 	GPIO_I2C_INPUT,
 	GPIO_I2C_OUTPUT,
@@ -44,3 +42,6 @@ extern void gpio_i2c_tx_stop(void);
 extern void gpio_i2c_tx_start(void);
 extern int gpio_i2c_tx_byte(uint8_t data);
 extern int gpio_i2c_rx_byte(uint8_t *data, int rx_mode);
+extern void gpio_i2c_init(int bps);
+extern void gpio_i2c_config_pin(GPIO_I2C_PIN pin, GPIO_I2C_DIRECTION dir);
+extern void gpio_i2c_set_pin_level(GPIO_I2C_PIN pin, int level);

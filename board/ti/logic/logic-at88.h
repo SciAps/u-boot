@@ -20,6 +20,4 @@
  */
 
 
-extern void gpio_i2c_init(int bps);
 extern int at88_send_packet(uint8_t *data, int len, uint8_t *rxbuf, int rxlen);
-extern void gpio_i2c_config_pin(GPIO_I2C_PIN pin, GPIO_I2C_DIRECTION dir);
