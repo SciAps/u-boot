@@ -25,7 +25,10 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-COBJS	:= logic.o logic-data.o logic-gpio.o logic-display.o
+PROD_ID_OBJS	:= prod-id/query.o prod-id/startup.o prod-id/crc-15.o \
+			prod-id/extract.o prod-id/type.o prod-id/size.o
+
+COBJS	:= logic.o logic-data.o logic-at88.o logic-i2c.o logic-gpio.o logic-display.o logic-product-id.o $(PROD_ID_OBJS)
 
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))

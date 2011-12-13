@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2008
- * Logic Produc Development, <www.logicpd.com>
+ * Logic Product Development, <www.logicpd.com>
  * Peter Barada <peter.barada@logicpd.com>
  *
  * This program is free software; you can redistribute it and/or

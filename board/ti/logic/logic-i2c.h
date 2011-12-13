@@ -19,10 +19,28 @@
  * MA 02111-1307 USA
  */
 
-// GPIO
-extern unsigned int pin_get_gpio_input(unsigned int pin);
-extern unsigned int pin_set_gpio_dataout(unsigned int pin, unsigned int set);
-extern unsigned int pin_init_gpio(unsigned int pin_num, unsigned int in_out);
+/* GPIO i2c code to access at88 chip */
 
-// Turn on VAUX1 voltage for Product ID
-extern void init_vaux1_voltage(void);
+typedef enum {
+	GPIO_I2C_INPUT,
+	GPIO_I2C_OUTPUT,
+} GPIO_I2C_DIRECTION;
+
+typedef enum {
+	RX_MODE_FIRST_BYTE,
+	RX_MODE_MIDDLE_BYTE,
+	RX_MODE_NEXT_TO_LAST_BYTE,
+	RX_MODE_LAST_BYTE,
+	RX_MODE_ONE_BYTE
+} I2C_RX_MODE;
+
+typedef enum {
+	GPIO_I2C_SDATA,
+	GPIO_I2C_SCLK,
+} GPIO_I2C_PIN;
+
+extern int gpio_i2c_busy(void);
+extern void gpio_i2c_tx_stop(void);
+extern void gpio_i2c_tx_start(void);
+extern int gpio_i2c_tx_byte(uint8_t data);
+extern int gpio_i2c_rx_byte(uint8_t *data, int rx_mode);

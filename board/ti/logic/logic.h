@@ -1,6 +1,9 @@
 /*
- * (C) Copyright 2008
- * Nishanth Menon <menon.nishanth@gmail.com>
+ * (C) Copyright 2011
+ * Logic Product Development <www.logicpd.com>
+ *
+ * Author:
+ * Peter Barada <peter.barada@logicpd.com>
  *
  * See file CREDITS for list of people who contributed to this
  * project.

@@ -1,9 +1,9 @@
 /*
- * (C) Copyright 2004-2008
- * Texas Instruments, <www.ti.com>
+ * (C) Copyright 2011
+ * Logic Product Development <www.logicpd.com>
  *
  * Author :
- *	Manikandan Pillai <mani.pillai@ti.com>
+ *	Peter Barada <peter.barada@logicpd.com>
  *
  * Derived from Beagle Board and 3430 SDP code by
  *	Richard Woodruff <r-woodruff2@ti.com>

@@ -19,10 +19,5 @@
  * MA 02111-1307 USA
  */
 
-// GPIO
-extern unsigned int pin_get_gpio_input(unsigned int pin);
-extern unsigned int pin_set_gpio_dataout(unsigned int pin, unsigned int set);
-extern unsigned int pin_init_gpio(unsigned int pin_num, unsigned int in_out);
-
-// Turn on VAUX1 voltage for Product ID
-extern void init_vaux1_voltage(void);
+#define DEBUG_PRODUCTION_DATA 0
+#define DEBUG_PRODUCTION_DATA_BUF 0
