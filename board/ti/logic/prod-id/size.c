@@ -39,6 +39,7 @@ int id_extract_size(struct id_cookie *cookie, int *err)
 		break;
 	default:
 		*err = -ID_EDOM;
+		size = 0;
 		break;
 	}
 	if (*err != ID_EOK)

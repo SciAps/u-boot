@@ -23,6 +23,8 @@
  */
 
 extern int logic_has_new_product_id(void);
+#if 0
 extern int logic_fetch_new_product_id(void);
+#endif
 extern void logic_dump_new_product_data(void);
-
+extern void logic_dump_serialization_info(void);

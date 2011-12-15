@@ -607,15 +607,32 @@ void _dump_production_data(void)
 	}
 }
 
+#ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
+static int has_new_product_id_data;
+#endif
+
 /* Stub functions that call into current AT88 product ID code.
  * Need to add tests for *new* product ID data before looking for older
  * data device/format. */
 int fetch_production_data(void)
 {
+#ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
+	if (logic_has_new_product_id()) {
+		printf("%s: logic_has_product_id true!\n", __FUNCTION__);
+		has_new_product_id_data = 1;
+		return 0;
+	}
+#endif
 	return _fetch_production_data();
 }
 
 void dump_production_data(void)
 {
+#ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
+	if (has_new_product_id_data) {
+		logic_dump_serialization_info();
+	}
+#endif
 	_dump_production_data();
+
 }

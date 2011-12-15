@@ -34,7 +34,7 @@
 #include "logic-id-data.h"
 
 /* Fetch a byte of data from the ID data; in this case we know ID data is
- * builtin to the program (in dm3730logic-id-data.h) */
+ * builtin to the program (in logic-id-data.h) */
 unsigned char id_fetch_byte(int offset, int *oor)
 {
 	/* If data is off end of know size then complain */
@@ -96,14 +96,13 @@ static int product_id_init(void)
 	return 0;
 }
 
-int dm3730logic_has_product_id(void)
+int logic_has_new_product_id(void)
 {
 	if (!found_id_data) {
 		if (!product_id_init()) {
 			found_id_data = 1;
 		}
-	} else
-		printf("%s:%d\n", __FUNCTION__, __LINE__);
+	}
 	return found_id_data;
 }
 
@@ -129,7 +128,7 @@ id_keys_t dram_cs_group_keys[] = {
 
 int dram_cs_group_values[ARRAY_SIZE(dram_cs_group_keys)];
 
-int dm3730logic_extract_ddr_timing(struct sdram_timings *timing)
+int logic_extract_ddr_timing(struct sdram_timings *timing)
 {
 	int ret;
 	struct id_cookie cookie, dram_bus_group_cookie;
@@ -216,7 +215,7 @@ int dm3730logic_extract_ddr_timing(struct sdram_timings *timing)
 }
 #endif
 
-int serialization_info(void)
+int logic_dump_serialization_info(void)
 {
 	int ret;
 	struct id_cookie cookie;
@@ -308,7 +307,7 @@ id_keys_t gpmc_config_reg_keys[] = {
 };
 
 #if 0
-int dm3730logic_extract_gpmc_timing(int cs, int *config_regs)
+int logic_extract_gpmc_timing(int cs, int *config_regs)
 {
 	int ret;
 	struct id_cookie cookie;
