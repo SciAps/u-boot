@@ -49,6 +49,7 @@ struct id_key {
 extern unsigned char id_fetch_byte(int offset, int *oor);
 
 struct id_data {
+	unsigned char *mem_ptr;	/* pointer to memory to copy data into */
 	unsigned int root_size;
 	unsigned int root_offset;
 };

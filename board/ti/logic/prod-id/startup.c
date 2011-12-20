@@ -26,35 +26,66 @@ int id_startup(struct id_data *data)
 	unsigned short xsum;
 	struct id_header hdr;
 	struct id_checksums xsums;
+	unsigned char *mem_ptr = data->mem_ptr;
 
 	cookie.offset = 0;
-
 	/* Data starts with the header, should be 'LpId' */
 	for (i=0; i<4; ++i) {
-		hdr.signature[i] = id_fetch_byte(cookie.offset++, &err);
+		byte = id_fetch_byte(cookie.offset, &err);
+		if (mem_ptr)
+			mem_ptr[cookie.offset] = byte;
+		hdr.signature[i] = byte;
+		cookie.offset++;
 		if (err != ID_EOK) {
 			id_printf("%s[%u]\n", __FILE__, __LINE__);
-			return err;
+			goto err_ret;
 		}
 		if (hdr.signature[i] != header_tag[i]) {
 			id_printf("%s[%u]\n", __FILE__, __LINE__);
-			return ID_ENODEV;
+			err = ID_ENODEV;
+			goto err_ret;
 		}
 	}
 
 	/* First LE 8-bit value is ID format version */
-	hdr.id_fmt_ver = id_fetch_byte(cookie.offset++, &err);
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	hdr.id_fmt_ver = byte;
+	cookie.offset++;
 	
 	/* Second LE 8-bit value is currently not used */
-	hdr.unused0 = id_fetch_byte(cookie.offset++, &err);
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	hdr.unused0 = byte;
+	cookie.offset++;
 	
 	/* Next LE 16-bit value is length of data */
-	hdr.data_length = id_fetch_byte(cookie.offset++, &err);
-	hdr.data_length |= (id_fetch_byte(cookie.offset++, &err) << 8);
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	hdr.data_length = byte;
+	cookie.offset++;
+
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	hdr.data_length |= byte << 8;
+	cookie.offset++;
 	
 	/* Next LE 16-bit value is xsum of header */
-	xsums.header = id_fetch_byte(cookie.offset++, &err);
-	xsums.header |= (id_fetch_byte(cookie.offset++, &err) << 8);
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	xsums.header = byte;
+	cookie.offset++;
+
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	xsums.header |= byte << 8;
+	cookie.offset++;
 
 	/* Checksum the header */
 	xsum = 0;
@@ -65,27 +96,40 @@ int id_startup(struct id_data *data)
 	if (xsum != xsums.header) {
 		id_printf("%s[%u] xsum: 0x%04x, xsums.header: 0x%04x\n", 
 		        __FILE__, __LINE__, xsum, xsums.header);
-		return -ID_EL2NSYNC;
+		err = -ID_EL2NSYNC;
+		goto err_ret;
 	}
 
 	/* Next LE 16-bit value is xsum of data */
-	xsums.data = id_fetch_byte(cookie.offset++, &err);
-	xsums.data |= (id_fetch_byte(cookie.offset++, &err) << 8);
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	xsums.data = byte;
+	cookie.offset++;
+
+	byte = id_fetch_byte(cookie.offset, &err);
+	if (mem_ptr)
+		mem_ptr[cookie.offset] = byte;
+	xsums.data |= byte << 8;
+	cookie.offset++;
 
 	/* Checksum the data (next id_len bytes), must match xsums.data */
 	xsum = 0;
 	for (i = 0; i < hdr.data_length; ++i) {
 		byte = id_fetch_byte(cookie.offset + i, &err);
+		if (mem_ptr)
+			mem_ptr[cookie.offset + i] = byte;
 		if (err != ID_EOK) {
 			id_printf("%s[%u]\n", __FILE__, __LINE__);
-			return err;
+			goto err_ret;
 		}
 		crc_15_step(&xsum, byte);
 	}
 	if (xsum != xsums.data) {
 		id_printf("%s[%u] xsum: 0x%04x, xsums.data: 0x%04x\n", 
 		        __FILE__, __LINE__, xsum, xsums.data);
-		return -ID_EL2NSYNC;
+		err = -ID_EL2NSYNC;
+		goto err_ret;
 	}
 
 	/* offset is now at the first byte of the root dictionary which
@@ -94,7 +138,7 @@ int id_startup(struct id_data *data)
 	data->root_size = extract_unsigned_pnum(&cookie, 5, &err);
 	if (err != ID_EOK) {
 		id_printf("%s[%u]\n", __FILE__, __LINE__);
-		return err;
+		goto err_ret;
 	}
 
 	data->root_size += cookie.offset - data->root_offset;
@@ -103,6 +147,14 @@ int id_startup(struct id_data *data)
 	id_printf("Data format version: %u\n", hdr.id_fmt_ver);	
 #endif	
 	return ID_EOK;
+
+err_ret:
+
+	/* Error return - make sure signature in SRAM is invalid */
+	if (mem_ptr)
+		mem_ptr[0] = 0;
+
+	return err;
 }
 
 /*

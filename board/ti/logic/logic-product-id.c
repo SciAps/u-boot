@@ -26,6 +26,8 @@
 
 #include <common.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch/mem.h>
+
 // #include "dm3730logic-ddr.h"
 // #include "dm3730logic-product-id.h"
 
@@ -87,6 +89,10 @@ static int found_id_data;
 static int product_id_init(void)
 {
 	int ret;
+
+	memset(&id_data, 0, sizeof(id_data));
+
+	id_data.mem_ptr = (void *)SRAM_BASE;
 
 	ret = id_startup(&id_data);
 	if (ret != ID_EOK) {
@@ -306,7 +312,6 @@ id_keys_t gpmc_config_reg_keys[] = {
 	ID_KEY_config7_reg,
 };
 
-#if 0
 int logic_extract_gpmc_timing(int cs, int *config_regs)
 {
 	int ret;
@@ -344,4 +349,4 @@ int logic_extract_gpmc_timing(int cs, int *config_regs)
 
 	return ret;
 }
-#endif
+
