@@ -318,6 +318,10 @@ int i2c_probe (uchar chip)
 		return res;
 	}
 
+    // Pre-enable the peripheral. Otherwise it randomly would not transmit.
+    // When it doesn't tramsit the probe command reports spurious addresses.
+	writew(I2C_CON_EN, &i2c_base->con);
+
 	/* wait until bus not busy */
 	wait_for_bb ();
 
