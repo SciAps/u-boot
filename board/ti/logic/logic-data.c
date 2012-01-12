@@ -617,9 +617,24 @@ static int has_new_product_id_data;
 int fetch_production_data(void)
 {
 #ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
-	if (logic_has_new_product_id()) {
+int err;
+
+    // This makes first pass through the EEPROM so we have to initialize
+    // software i2c before reading and clean up after we are done        
+    err=at24_wakeup();
+    if(err) {
+        printf("wakeup_err=%d\n", err);
+    }
+    if (logic_has_new_product_id()) {
 		printf("%s: logic_has_product_id true!\n", __FUNCTION__);
 		has_new_product_id_data = 1;
+
+        /* Restore GPIO_OE registers back to reset state (All input) */
+        gpio_i2c_config_pin(GPIO_I2C_SDATA, GPIO_I2C_INPUT);
+        gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_INPUT);
+        /* Restore pins back to their intended use */
+        gpio_i2c_restore_pins();
+
 		return 0;
 	}
 #endif
@@ -629,9 +644,27 @@ int fetch_production_data(void)
 void dump_production_data(void)
 {
 #ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
+int err;
+
 	if (has_new_product_id_data) {
+
+        // This makes another pass through the EEPROM so we have to initialize
+        // software i2c before reading and clean up after we are done        
+        err=at24_wakeup();
+        if(err) {
+            printf("wakeup_err=%d\n", err);
+        }
+
 		logic_dump_serialization_info();
+
+        /* Restore GPIO_OE registers back to reset state (All input) */
+        gpio_i2c_config_pin(GPIO_I2C_SDATA, GPIO_I2C_INPUT);
+        gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_INPUT);
+        /* Restore pins back to their intended use */
+        gpio_i2c_restore_pins();
+
 	}
+    else
 #endif
 	_dump_production_data();
 

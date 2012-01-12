@@ -40,7 +40,7 @@
 int at24_wakeup(void)
 {
 	int i;
-	gpio_i2c_init(50000);
+	gpio_i2c_init(100000);
 
 	/* Need 9 clocks to wake up AT24 chips */
 	gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_OUTPUT);
@@ -105,7 +105,8 @@ static int at24_send_offset(u32 offset)
 /* Read 'size' bytes from the AT88 at offset 'offset'; return 0 if good */
 int at24_read(u32 offset, u8 *buf, u32 size)
 {
-	int err;
+	int rx_mode;
+	int err, idx;
 	
 	err = at24_send_offset(offset);
 	if (err)
@@ -117,6 +118,23 @@ int at24_read(u32 offset, u8 *buf, u32 size)
 	if (err)
 		return err;
 
-	/* Fetch the bytes */
-	return 0;
+	for (idx = 0; idx < size; ++idx) {
+		if (size == 1)
+			rx_mode = RX_MODE_ONE_BYTE;
+		else if (idx == (size - 1))
+			rx_mode = RX_MODE_LAST_BYTE;
+		else if (idx == (size - 2))
+			rx_mode = RX_MODE_NEXT_TO_LAST_BYTE;
+		else if (idx == 0)
+			rx_mode = RX_MODE_FIRST_BYTE;
+		else
+			rx_mode = RX_MODE_MIDDLE_BYTE;
+
+		err = gpio_i2c_rx_byte(&buf[idx], rx_mode);
+		if (err)
+			printf("%s:%d err idx %d\n", __FUNCTION__, __LINE__, idx);
+	}
+
+	gpio_i2c_tx_stop();
+	return err;
 }

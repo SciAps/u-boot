@@ -42,12 +42,8 @@
 #define CONFIG_OMAP3430		1	/* which is in a 3430 */
 #define CONFIG_OMAP3_LOGIC	1	/* working with Logic OMAP boards */
 
-#if 0
-/* Define following to enable new product ID code.  Note that currently
- * it uses a built-in byte array instead of the actual at24 chip to access
- * the product ID data */
+/* Define following to enable new product ID code. */
 #define CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID	1
-#endif
 
 #define CONFIG_SDRC	/* The chip has SDRC controller */
 

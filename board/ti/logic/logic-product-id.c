@@ -35,19 +35,26 @@
 #include "prod-id/id-errno.h"
 #include "logic-id-data.h"
 
-/* Fetch a byte of data from the ID data; in this case we know ID data is
- * builtin to the program (in logic-id-data.h) */
+/* Fetch a byte of data from the ID data on the i2c bus */
 unsigned char id_fetch_byte(int offset, int *oor)
 {
-	/* If data is off end of know size then complain */
+unsigned char buf;
+
+	/* If data is off end of known size then complain */
 	if (offset >= sizeof(id_data_buf)) {
 		id_printf("Attempt to read past end of buffer (offset %u >= size %u)\n", offset, sizeof(id_data_buf));
 		*oor = -ID_ERANGE;
-		return 0;  /* Force upper laer to recover */
+		return 0;  /* Force upper layer to recover */
 	}
 
 	*oor = ID_EOK;
-	return id_data_buf[offset];
+
+    if (at24_read(offset, &buf, 1)==0) {
+        return buf;
+    }
+
+    *oor = ID_ENODEV;
+    return 0;
 }
 
 int id_printf(const char *fmt, ...)
