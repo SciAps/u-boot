@@ -43,6 +43,7 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/nand_bch.h>
 
 #ifdef CONFIG_MTD_PARTITIONS
 #include <linux/mtd/partitions.h>
@@ -860,7 +861,7 @@ static int nand_wait(struct mtd_info *mtd, struct nand_chip *this)
  *
  * Not for syndrome calculating ecc controllers, which use a special oob layout
  */
-static int nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ int nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 			      uint8_t *buf, int page)
 {
 	chip->read_buf(mtd, buf, mtd->writesize);
@@ -917,7 +918,7 @@ static int nand_read_page_raw_syndrome(struct mtd_info *mtd, struct nand_chip *c
  * @buf:	buffer to store read data
  * @page:	page number to read
  */
-static int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
 				uint8_t *buf, int page)
 {
 	int i, eccsize = chip->ecc.size;
@@ -959,7 +960,7 @@ static int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
  * @readlen:	data length
  * @bufpoi:	buffer to store read data
  */
-static int nand_read_subpage(struct mtd_info *mtd, struct nand_chip *chip, uint32_t data_offs, uint32_t readlen, uint8_t *bufpoi)
+/* static */ int nand_read_subpage(struct mtd_info *mtd, struct nand_chip *chip, uint32_t data_offs, uint32_t readlen, uint8_t *bufpoi)
 {
 	int start_step, end_step, num_steps;
 	uint32_t *eccpos = chip->ecc.layout->eccpos;
@@ -1435,7 +1436,7 @@ static int nand_read(struct mtd_info *mtd, loff_t from, size_t len,
  * @page:	page number to read
  * @sndcmd:	flag whether to issue read command or not
  */
-static int nand_read_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ int nand_read_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 			     int page, int sndcmd)
 {
 	if (sndcmd) {
@@ -1491,7 +1492,7 @@ static int nand_read_oob_syndrome(struct mtd_info *mtd, struct nand_chip *chip,
  * @chip:	nand chip info structure
  * @page:	page number to write
  */
-static int nand_write_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ int nand_write_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
 			      int page)
 {
 	int status = 0;
@@ -1715,7 +1716,7 @@ static int nand_read_oob(struct mtd_info *mtd, loff_t from,
  *
  * Not for syndrome calculating ecc controllers, which use a special oob layout
  */
-static void nand_write_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ void nand_write_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
 				const uint8_t *buf)
 {
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -1766,7 +1767,7 @@ static void nand_write_page_raw_syndrome(struct mtd_info *mtd, struct nand_chip 
  * @chip:	nand chip info structure
  * @buf:	data buffer
  */
-static void nand_write_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
+/* static */ void nand_write_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
 				  const uint8_t *buf)
 {
 	int i, eccsize = chip->ecc.size;
@@ -2895,7 +2896,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 	/*
 	 * If no default placement scheme is given, select an appropriate one
 	 */
-	if (!chip->ecc.layout) {
+	if (!chip->ecc.layout && (chip->ecc.mode != NAND_ECC_SOFT_BCH)) {
 		switch (mtd->oobsize) {
 		case 8:
 			chip->ecc.layout = &nand_oob_8;
@@ -2998,6 +2999,41 @@ int nand_scan_tail(struct mtd_info *mtd)
 			/* Put chip into no-ECC mode */
 			uint8_t params[4] = {0x00, 0x00, 0x00, 0x00};
 			nand_set_features(mtd, 0x90, params);
+		}
+		break;
+
+	case NAND_ECC_SOFT_BCH:
+		printk(KERN_INFO "NAND ECC: SOFT_BCH\n");
+		if (!mtd_nand_has_bch()) {
+			printk(KERN_WARNING "CONFIG_MTD_ECC_BCH not enabled\n");
+			BUG();
+		}
+		chip->ecc.calculate = nand_bch_calculate_ecc;
+		chip->ecc.correct = nand_bch_correct_data;
+		chip->ecc.read_page = nand_read_page_swecc;
+		chip->ecc.read_subpage = nand_read_subpage;
+		chip->ecc.write_page = nand_write_page_swecc;
+		chip->ecc.read_page_raw = nand_read_page_raw;
+		chip->ecc.write_page_raw = nand_write_page_raw;
+		chip->ecc.read_oob = nand_read_oob_std;
+		chip->ecc.write_oob = nand_write_oob_std;
+		/*
+		 * Board driver should supply ecc.size and ecc.bytes values to
+		 * select how many bits are correctable; see nand_bch_init()
+		 * for details.
+		 * Otherwise, default to 4 bits for large page devices
+		 */
+		if (!chip->ecc.size && (mtd->oobsize >= 64)) {
+			chip->ecc.size = 512;
+			chip->ecc.bytes = 7;
+		}
+		chip->ecc.priv = nand_bch_init(mtd,
+					       chip->ecc.size,
+					       chip->ecc.bytes,
+					       &chip->ecc.layout);
+		if (!chip->ecc.priv) {
+			printk(KERN_WARNING "BCH ECC initialization failed!\n");
+			BUG();
 		}
 		break;
 
@@ -3155,6 +3191,9 @@ void nand_release(struct mtd_info *mtd)
 	/* Deregister partitions */
 	del_mtd_partitions(mtd);
 #endif
+
+	if (chip->ecc.mode == NAND_ECC_SOFT_BCH)
+		nand_bch_free((struct nand_bch_control *)chip->ecc.priv);
 
 	/* Free bad block table memory */
 	kfree(chip->bbt);

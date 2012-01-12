@@ -27,7 +27,9 @@
 #include <asm/arch/mem.h>
 #include <asm/arch/omap_gpmc.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/mtd/mtd.h>
 #include <linux/mtd/nand_ecc.h>
+#include <linux/mtd/nand_bch.h>
 #include <nand.h>
 
 static uint8_t cs;
@@ -589,8 +591,49 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 	nand->ecc.correct = NULL;
 	nand->ecc.calculate = NULL;
 
+	/* If currently in BCH then free the priv pointer */
+	if (nand->ecc.mode == NAND_ECC_SOFT_BCH && nand->ecc.priv) {
+		nand_bch_free((struct nand_bch_control *)nand->ecc.priv);
+		nand->ecc.priv = NULL;
+	}
+
 	/* Setup the ecc configurations again */
-	if (mode == OMAP_ECC_HW) {
+	if (mode == OMAP_ECC_SOFT_BCH) {
+		nand->ecc.calculate = nand_bch_calculate_ecc;
+		nand->ecc.correct = nand_bch_correct_data;
+		nand->ecc.read_page = nand_read_page_swecc;
+		nand->ecc.read_subpage = nand_read_subpage;
+		nand->ecc.write_page = nand_write_page_swecc;
+		nand->ecc.read_page_raw = nand_read_page_raw;
+		nand->ecc.write_page_raw = nand_write_page_raw;
+		nand->ecc.read_oob = nand_read_oob_std;
+		nand->ecc.write_oob = nand_write_oob_std;
+		/*
+		 * Board driver should supply ecc.size and ecc.bytes values to
+		 * select how many bits are correctable; see nand_bch_init()
+		 * for details.
+		 * Otherwise, default to 4 bits for large page devices
+		 */
+#if 1
+		/* Since switching, clear out previous ECC setup and let
+		 * BCH figure it out */
+		nand->ecc.size = 0;
+		nand->ecc.bytes = 0;
+		nand->ecc.layout = NULL;
+#endif
+		if (!nand->ecc.size && (mtd->oobsize >= 64)) {
+			nand->ecc.size = 512;
+			nand->ecc.bytes = 7;
+		}
+		nand->ecc.priv = nand_bch_init(mtd,
+					       nand->ecc.size,
+					       nand->ecc.bytes,
+					       &nand->ecc.layout);
+		if (!nand->ecc.priv) {
+			printk(KERN_WARNING "BCH ECC initialization failed!\n");
+			BUG();
+		}
+	} else if (mode == OMAP_ECC_HW) {
 		nand->ecc.mode = NAND_ECC_HW;
 		nand->ecc.layout = &hw_nand_oob;
 		nand->ecc.size = 512;

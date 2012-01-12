@@ -139,7 +139,9 @@ typedef enum {
 	NAND_ECC_HW,
 	NAND_ECC_HW_SYNDROME,
 	NAND_ECC_HW_OOB_FIRST,
-	NAND_ECC_CHIP,
+	NAND_ECC_CHIP,		/* ECC hardware in-chip */
+	NAND_ECC_SOFT_BCH,	/* Soft BCH ECC engine */
+	NAND_ECC_HW_BCH,	/* If NAND uses soft-BCH instead of ECC_CHIP */
 } nand_ecc_modes_t;
 
 /*
@@ -316,6 +318,7 @@ struct nand_hw_control {
  * @prepad:	padding information for syndrome based ecc generators
  * @postpad:	padding information for syndrome based ecc generators
  * @layout:	ECC layout control struct pointer
+ * @priv:	pointer to private ecc control data
  * @hwctl:	function to control hardware ecc generator. Must only
  *		be provided if an hardware ECC is available
  * @calculate:	function for ecc calculation or readback from ecc hardware
@@ -336,6 +339,7 @@ struct nand_ecc_ctrl {
 	int			prepad;
 	int			postpad;
 	struct nand_ecclayout	*layout;
+	void *priv;
 	void			(*hwctl)(struct mtd_info *mtd, int mode);
 	int			(*calculate)(struct mtd_info *mtd,
 					     const uint8_t *dat,
@@ -634,5 +638,21 @@ struct platform_nand_chip *get_platform_nandchip(struct mtd_info *mtd)
 
 	return chip->priv;
 }
+
+extern int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
+				uint8_t *buf, int page);
+extern int nand_read_subpage(struct mtd_info *mtd, struct nand_chip *chip,
+			uint32_t data_offs, uint32_t readlen, uint8_t *bufpoi);
+extern void nand_write_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
+				const uint8_t *buf);
+extern int nand_read_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
+			uint8_t *buf, int page);
+extern void nand_write_page_raw(struct mtd_info *mtd, struct nand_chip *chip,
+				const uint8_t *buf);
+extern int nand_read_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
+			int page, int sndcmd);
+extern int nand_write_oob_std(struct mtd_info *mtd, struct nand_chip *chip,
+			int page);
+
 
 #endif /* __LINUX_MTD_NAND_H */

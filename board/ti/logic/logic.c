@@ -193,6 +193,7 @@ u8 omap3_evm_need_extvbus(void)
 
 static void setup_nand_settings(void);
 static void setup_isp176x_settings(void);
+static void setup_compact_flash_settings(void);
 static void fix_flash_sync(void);
 
 /*
@@ -212,10 +213,15 @@ int board_init(void)
 	/* Update NAND settings */
 	setup_nand_settings();
 
-	/* Seup ISP176x settings */
+	/* Setup ISP176x settings */
 	if (gd->bd->bi_arch_number == MACH_TYPE_DM3730_TORPEDO
 		|| gd->bd->bi_arch_number == MACH_TYPE_OMAP3_TORPEDO)
 		setup_isp176x_settings();
+
+	/* Setup ComactFlash GPMC settings */
+	if (gd->bd->bi_arch_number == MACH_TYPE_DM3730_SOM_LV
+		|| gd->bd->bi_arch_number == MACH_TYPE_OMAP3530_LV_SOM)
+		setup_compact_flash_settings();
 
 	/* Probe for NOR and if found put into sync mode */
 	fix_flash_sync();
@@ -403,6 +409,29 @@ static void setup_nand_settings(void)
 	writel(LOGIC_NAND_GPMC_CONFIG5, &gpmc_cfg->cs[0].config5);
 	writel(LOGIC_NAND_GPMC_CONFIG6, &gpmc_cfg->cs[0].config6);
 	writel(LOGIC_NAND_GPMC_CONFIG7, &gpmc_cfg->cs[0].config7);
+	sdelay(2000);
+}
+
+#define LOGIC_CF_GPMC_CONFIG1	0x00001210
+#define LOGIC_CF_GPMC_CONFIG2	0x00131000
+#define LOGIC_CF_GPMC_CONFIG3	0x001f1f01
+#define LOGIC_CF_GPMC_CONFIG4	0x10030e03
+#define LOGIC_CF_GPMC_CONFIG5	0x010f1411
+#define LOGIC_CF_GPMC_CONFIG6	0x80030600
+#define LOGIC_CF_GPMC_CONFIG7	0x00000f58
+
+static void setup_compact_flash_settings(void)
+{
+	/* Configure GPMC registers */
+	writel(0x00000000, &gpmc_cfg->cs[3].config7);
+	sdelay(1000);
+	writel(LOGIC_CF_GPMC_CONFIG1, &gpmc_cfg->cs[3].config1);
+	writel(LOGIC_CF_GPMC_CONFIG2, &gpmc_cfg->cs[3].config2);
+	writel(LOGIC_CF_GPMC_CONFIG3, &gpmc_cfg->cs[3].config3);
+	writel(LOGIC_CF_GPMC_CONFIG4, &gpmc_cfg->cs[3].config4);
+	writel(LOGIC_CF_GPMC_CONFIG5, &gpmc_cfg->cs[3].config5);
+	writel(LOGIC_CF_GPMC_CONFIG6, &gpmc_cfg->cs[3].config6);
+	writel(LOGIC_CF_GPMC_CONFIG7, &gpmc_cfg->cs[3].config7);
 	sdelay(2000);
 }
 
