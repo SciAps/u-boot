@@ -268,6 +268,9 @@
 	"setenv preboot;"						\
 	"saveenv;"
 
+#ifdef CONFIG_USB_TTY
+#define  USBTTY "usbtty=cdc_acm\0"
+#endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"mtdids=" MTDIDS_DEFAULT "\0"	\
@@ -284,7 +287,7 @@
 	"disablecharging no\0" \
 	"loadaddr=0x81000000\0" \
 	"serverip=192.168.3.5\0" \
-	"usbtty=cdc_acm\0" \
+	USBTTY \
 	"consoledevice=ttyO0\0" \
 	"display=15\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
