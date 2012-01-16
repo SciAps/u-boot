@@ -269,7 +269,9 @@
 	"saveenv;"
 
 #ifdef CONFIG_USB_TTY
-#define  USBTTY "usbtty=cdc_acm\0"
+#define OMAP3LOGIC_USBTTY "usbtty=cdc_acm\0"
+#else
+#define OMAP3LOGIC_USBTTY
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -287,7 +289,7 @@
 	"disablecharging no\0" \
 	"loadaddr=0x81000000\0" \
 	"serverip=192.168.3.5\0" \
-	USBTTY \
+	OMAP3LOGIC_USBTTY \
 	"consoledevice=ttyO0\0" \
 	"display=15\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
