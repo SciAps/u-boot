@@ -3035,6 +3035,12 @@ int nand_scan_tail(struct mtd_info *mtd)
 			printk(KERN_WARNING "BCH ECC initialization failed!\n");
 			BUG();
 		}
+
+		if (chip->has_chip_ecc) {
+			/* Put chip into no-ECC mode */
+			uint8_t params[4] = {0x00, 0x00, 0x00, 0x00};
+			nand_set_features(mtd, 0x90, params);
+		}
 		break;
 
 	case NAND_ECC_CHIP:

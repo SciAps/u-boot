@@ -74,12 +74,25 @@ int nand_bch_calculate_ecc(struct mtd_info *mtd, const unsigned char *buf,
 	struct nand_bch_control *nbc = chip->ecc.priv;
 	unsigned int i;
 
+#ifdef DEBUG_BCH
+	printf("%s:%d buf %p code %p\n", __FUNCTION__, __LINE__, buf, code);
+	for (i=0; i<16; ++i)
+		printf("%s%02x", !i?"dat: ":" ", buf[i]);
+	printf("\n");
+#endif
 	memset(code, 0, chip->ecc.bytes);
 	encode_bch(nbc->bch, buf, chip->ecc.size, code);
 
 	/* apply mask so that an erased page is a valid codeword */
 	for (i = 0; i < chip->ecc.bytes; i++)
 		code[i] ^= nbc->eccmask[i];
+
+#ifdef DEBUG_BCH
+	printf("%s:%d code:", __FUNCTION__, __LINE__);
+	for (i=0; i<7; ++i)
+		printf(" %02x", code[i]);
+	printf("\n");
+#endif
 
 	return 0;
 }
@@ -101,6 +114,19 @@ int nand_bch_correct_data(struct mtd_info *mtd, unsigned char *buf,
 	struct nand_bch_control *nbc = chip->ecc.priv;
 	unsigned int *errloc = nbc->errloc;
 	int i, count;
+
+#ifdef DEBUG_BCH
+	printf("%s:%d buf %p read_ecc %p calc_ecc %p\n", __FUNCTION__, __LINE__, buf, read_ecc, calc_ecc);
+	for (i=0; i<16; ++i)
+		printf("%s%02x", !i?"dat: ":" ", buf[i]);
+	printf("\n");
+	for (i=0; i<7; ++i)
+		printf("%s%02x", !i?"read_ecc: ":" ", read_ecc[i]);
+	printf("\n");
+	for (i=0; i<7; ++i)
+		printf("%s%02x", !i?"calc_ecc: ":" ", calc_ecc[i]);
+	printf("\n");
+#endif
 
 	count = decode_bch(nbc->bch, NULL, chip->ecc.size, read_ecc, calc_ecc,
 			   NULL, errloc);

@@ -105,8 +105,13 @@
 #define BCH_ECC_WORDS(_p)      DIV_ROUND_UP(GF_M(_p)*GF_T(_p), 32)
 #define BCH_ECC_BYTES(_p)      DIV_ROUND_UP(GF_M(_p)*GF_T(_p), 8)
 
+#ifdef DEBUG_BCH
+#define dbg(args...) printf(args);
+#define gf_poly_str(x) "x"
+#else
 #ifndef dbg
 #define dbg(_fmt, args...)     do {} while (0)
+#endif
 #endif
 
 /*
@@ -1010,6 +1015,9 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 	int i, err, nroots;
 	uint32_t sum;
 
+#ifdef DEBUG_BCH
+	printf("%s:%d syn %p\n", __FUNCTION__, __LINE__, syn);
+#endif
 	/* sanity check: make sure data length can be handled */
 	if (8*len > (bch->n-bch->ecc_bits))
 		return -EINVAL;
@@ -1033,19 +1041,30 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 				bch->ecc_buf[i] ^= bch->ecc_buf2[i];
 				sum |= bch->ecc_buf[i];
 			}
-			if (!sum)
+			if (!sum) {
 				/* no error found */
+#ifdef DEBUG_BCH
+				printf("%s:%d\n", __FUNCTION__, __LINE__);
+#endif
 				return 0;
+			}
 		}
 		compute_syndromes(bch, bch->ecc_buf, bch->syn);
 		syn = bch->syn;
 	}
 
 	err = compute_error_locator_polynomial(bch, syn);
+#ifdef DEBUG_BCH
+	printf("%s:%d err %d\n", __FUNCTION__, __LINE__, err);
+#endif
 	if (err > 0) {
 		nroots = find_poly_roots(bch, 1, bch->elp, errloc);
-		if (err != nroots)
+		if (err != nroots) {
+#ifdef DEBUG_BCH
+			printf("%s:%d err %d nroots %d\n", __FUNCTION__, __LINE__, err, nroots);
+#endif
 			err = -1;
+		}
 	}
 	if (err > 0) {
 		/* post-process raw error locations for easier correction */
@@ -1059,6 +1078,10 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 			errloc[i] = (errloc[i] & ~7)|(7-(errloc[i] & 7));
 		}
 	}
+#ifdef DEBUG_BCH
+	if (err < 0)
+		printf("%s:%d err %d\n", __FUNCTION__, __LINE__, err);
+#endif
 	return (err >= 0) ? err : -EBADMSG;
 }
 // EXPORT_SYMBOL_GPL(decode_bch);

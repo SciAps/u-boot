@@ -599,6 +599,7 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 
 	/* Setup the ecc configurations again */
 	if (mode == OMAP_ECC_SOFT_BCH) {
+		nand->ecc.mode = NAND_ECC_SOFT_BCH;
 		nand->ecc.calculate = nand_bch_calculate_ecc;
 		nand->ecc.correct = nand_bch_correct_data;
 		nand->ecc.read_page = nand_read_page_swecc;
