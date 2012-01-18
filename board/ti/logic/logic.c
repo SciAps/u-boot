@@ -461,21 +461,28 @@ static void setup_isp176x_settings(void)
 	sdelay(2000);
 }
 
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG1	0x00001210
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG2	0x00101001
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG3	0x00020201
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG4	0x0f031003
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG5	0x000f1111
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG6	0x0f030080
-#define LOGIC_STNOR_ASYNC_GPMC_CONFIG7	0x00000c50
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG1		0x00001210
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG2		0x00101001
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG3		0x00020201
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG4		0x0f031003
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG5		0x000f1111
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG6		0x0f030080
+#define LOGIC_STNOR_ASYNC_GPMC_CONFIG7		0x00000c50
 
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG1	0x6A411213
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG2	0x000C1503
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG3	0x00050503
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG4	0x0B051506
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG5	0x020E0C15
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG6	0x0B0603C3
-#define LOGIC_STNOR_SYNC_GPMC_CONFIG7	0x00000c50
+#define LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG1	0x6A411213
+#define LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG2	0x000C1503
+#define LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG3	0x00050503
+#define LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG4	0x0B051506
+
+#define LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG1	0x68411213
+#define LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG2	0x000C1502
+#define LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG3	0x00040402
+#define LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG4	0x0B051505
+
+#define LOGIC_STNOR_SYNC_GPMC_CONFIG5		0x020E0C15
+#define LOGIC_STNOR_SYNC_GPMC_CONFIG6		0x0B0603C3
+#define LOGIC_STNOR_SYNC_GPMC_CONFIG7		0x00000c50
+
 
 #define LOGIC_FLASH_BASE 0x10000000
 
@@ -502,6 +509,7 @@ static void setup_isp176x_settings(void)
  * Description: Setting up the configuration GPMC registers specific to the
  *		NOR flash (and place in sync mode if not done).
  */
+int omap3logic_flash_exists;
 static void fix_flash_sync(void)
 {
 	int arch_number;
@@ -509,7 +517,8 @@ static void fix_flash_sync(void)
 
 	/* Check the arch_number - Torpedo doesn't have NOR flash */
 	arch_number = gd->bd->bi_arch_number;
-	if (arch_number == MACH_TYPE_DM3730_TORPEDO || arch_number == MACH_TYPE_OMAP3_TORPEDO)
+	if (!(arch_number == MACH_TYPE_DM3730_SOM_LV
+			|| arch_number == MACH_TYPE_OMAP3530_LV_SOM))
 		return;
 
 	/* Check CS2 config, if its not in sync, or not valid, then configure it */
@@ -560,10 +569,20 @@ static void fix_flash_sync(void)
 		sdelay(2000);
 
 		/* Third, set GPMC for sync. */
-		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG1, &gpmc_cfg->cs[2].config1);
-		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG2, &gpmc_cfg->cs[2].config2);
-		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG3, &gpmc_cfg->cs[2].config3);
-		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG4, &gpmc_cfg->cs[2].config4);
+		if (arch_number == MACH_TYPE_DM3730_SOM_LV) {
+			/* Use DM3730 SOM LV NOR timings */
+			writel(LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG1, &gpmc_cfg->cs[2].config1);
+			writel(LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG2, &gpmc_cfg->cs[2].config2);
+			writel(LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG3, &gpmc_cfg->cs[2].config3);
+			writel(LOGIC_STNOR_DM37x_SYNC_GPMC_CONFIG4, &gpmc_cfg->cs[2].config4);
+		}
+		if (arch_number == MACH_TYPE_OMAP3530_LV_SOM) {
+			/* Use DM3730 SOM LV NOR timings */
+			writel(LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG1, &gpmc_cfg->cs[2].config1);
+			writel(LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG2, &gpmc_cfg->cs[2].config2);
+			writel(LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG3, &gpmc_cfg->cs[2].config3);
+			writel(LOGIC_STNOR_OMAP35x_SYNC_GPMC_CONFIG4, &gpmc_cfg->cs[2].config4);
+		}
 		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG5, &gpmc_cfg->cs[2].config5);
 		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG6, &gpmc_cfg->cs[2].config6);
 		writel(LOGIC_STNOR_SYNC_GPMC_CONFIG7, &gpmc_cfg->cs[2].config7);
@@ -571,6 +590,8 @@ static void fix_flash_sync(void)
 		writel(readl(&gpmc_cfg->config) | 0x200, &gpmc_cfg->config);
 	} else
 		puts ("NOR: Already initialized in sync mode\n");
+
+	omap3logic_flash_exists = 1;
 }
 
 int board_eth_init(bd_t *bis)

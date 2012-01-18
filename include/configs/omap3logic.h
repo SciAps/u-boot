@@ -190,7 +190,7 @@
 
 #define BOARD_LATE_INIT
 
-#undef CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
+#define CONFIG_CMD_FLASH		/* flinfo, erase, protect	*/
 #undef CONFIG_CMD_FPGA		/* FPGA configuration Support	*/
 #undef CONFIG_CMD_IMI		/* iminfo			*/
 #undef CONFIG_CMD_IMLS		/* List all found images	*/
@@ -199,7 +199,6 @@
 #define CONFIG_CMD_MUX_CONFIG	/* mux_config */
 #define CONFIG_CMD_SDRC_CONFIG	/* sdrc_config */
 
-#define CONFIG_SYS_NO_FLASH
 #define CONFIG_HARD_I2C			1
 #define CONFIG_SYS_I2C_SPEED		100000
 #define CONFIG_SYS_I2C_SLAVE		1
@@ -439,25 +438,31 @@
  * FLASH and environment organization
  */
 
+/* variable that's non-zero if flash exists */
+#define CONFIG_SYS_FLASH_PRESENCE omap3logic_flash_exists
+#ifndef __ASSEMBLY__
+extern int omap3logic_flash_exists;
+#endif
+#define CONFIG_SYS_FLASH_BASE		0x10000000 /* FLASH base address */
+#define CONFIG_SYS_FLASH_SIZE			8 /* 8MB */
+#define CONFIG_SYS_MAX_FLASH_SECT		(64+8) /* 8MB/128K */
+#define CONFIG_SYS_MAX_FLASH_BANKS		1
+#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
+#undef	CONFIG_SYS_FLASH_CHECKSUM
+#define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
+#define CONFIG_FLASH_CFI_DRIVER	/* use the CFI driver */
+
+
 /* **** PISMO SUPPORT *** */
 
 /* Configure the PISMO */
 #define PISMO1_NAND_SIZE		GPMC_SIZE_128M
-#define PISMO1_ONEN_SIZE		GPMC_SIZE_128M
 
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
 
-#if defined(CONFIG_CMD_NAND)
-#define CONFIG_SYS_FLASH_BASE		PISMO1_NAND_BASE
-#elif defined(CONFIG_CMD_ONENAND)
-#define CONFIG_SYS_FLASH_BASE		PISMO1_ONEN_BASE
-#endif
-
 /* Monitor at start of flash */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
-#define CONFIG_SYS_ONENAND_BASE		ONENAND_MAP
 
-#define ONENAND_ENV_OFFSET		0x260000 /* environment starts here */
 #define SMNAND_ENV_OFFSET		0x260000 /* environment starts here */
 
 #if defined(CONFIG_CMD_NAND)

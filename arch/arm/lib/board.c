@@ -477,6 +477,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	mem_malloc_init (malloc_start, TOTAL_MALLOC_LEN);
 
 #if !defined(CONFIG_SYS_NO_FLASH)
+#ifdef CONFIG_SYS_FLASH_PRESENCE
+	if (!CONFIG_SYS_FLASH_PRESENCE)
+		goto skip_flash;
+#endif
 	puts ("Flash: ");
 
 	if ((flash_size = flash_init ()) > 0) {
@@ -501,6 +505,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		puts (failed);
 		hang ();
 	}
+#ifdef CONFIG_SYS_FLASH_PRESENCE
+skip_flash:
+	;
+#endif
 #endif
 
 #if defined(CONFIG_CMD_NAND)

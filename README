@@ -2408,6 +2408,12 @@ Configuration Settings:
 		Enables allocating and saving a kernel copy of the bd_info in
 		space between "bootm_low" and "bootm_low" + BOOTMAPSZ.
 
+- CONFIG_SYS_FLASH_PRESENCE
+		If defined is checked and if zero then board_init_r
+		skips calling flash_init.  Used in cases where board
+		has optional NOR flash (and when not present does not
+		setup chip select to allow access).
+
 - CONFIG_SYS_MAX_FLASH_BANKS:
 		Max number of Flash memory banks
 
