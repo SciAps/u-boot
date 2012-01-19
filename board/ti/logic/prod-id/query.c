@@ -129,7 +129,7 @@ int id_find_string(struct id_cookie *cookie, id_keys_t key, unsigned char *str_p
 		return -ID_ERANGE;
 
 	for(i=0; i<size; ++i) {
-		byte = id_fetch_byte(d_cookie.offset++, &err);
+		byte = id_fetch_byte(d_cookie.mem_ptr, d_cookie.offset++, &err);
 		if (err)
 			return err;
 		str_ptr[i] = byte;

@@ -33,15 +33,20 @@
 
 #include "prod-id/interface.h"
 #include "prod-id/id-errno.h"
+#include "logic-i2c.h"
 #include "logic-id-data.h"
+#include "logic-at24.h"
+#include "logic-gpio.h"
+
+struct id_data id_data;
 
 /* Fetch a byte of data from the ID data on the i2c bus */
-unsigned char id_fetch_byte(int offset, int *oor)
+unsigned char id_fetch_byte(unsigned char *mem_ptr, int offset, int *oor)
 {
-unsigned char buf;
+	unsigned char val;
 
 	/* If data is off end of known size then complain */
-	if (offset >= sizeof(id_data_buf)) {
+	if (id_data.root_size && (offset >= (id_data.root_offset + id_data.root_size))) {
 		id_printf("Attempt to read past end of buffer (offset %u >= size %u)\n", offset, sizeof(id_data_buf));
 		*oor = -ID_ERANGE;
 		return 0;  /* Force upper layer to recover */
@@ -49,12 +54,17 @@ unsigned char buf;
 
 	*oor = ID_EOK;
 
-    if (at24_read(offset, &buf, 1)==0) {
-        return buf;
-    }
+	if (mem_ptr) {
+		val = mem_ptr[offset];
+		return val;
+	} else {
+		if (at24_read(offset, &val, 1) == 0) {
+			return val;
+		}
+	}
 
-    *oor = ID_ENODEV;
-    return 0;
+	*oor = ID_ENODEV;
+	return 0;
 }
 
 int id_printf(const char *fmt, ...)
@@ -90,7 +100,6 @@ void id_error(const char *fmt, ...)
 
 }
 
-struct id_data id_data;
 static int found_id_data;
 /* Initialize the product ID data and return 0 if found */
 static int product_id_init(void)
@@ -99,9 +108,22 @@ static int product_id_init(void)
 
 	memset(&id_data, 0, sizeof(id_data));
 
+	/* id_data.mem_ptr is an address top copy the ID data from the AT24
+	 * chip into during startup(since startup codehas to CRC whole data
+	 * area).  Once its read there we can access the copy instead of
+	 * going back to the AT24 to read the data. */
 	id_data.mem_ptr = (void *)SRAM_BASE;
 
+	ret=at24_wakeup();
+	if(ret) {
+		printf("wakeup_err=%d\n", ret);
+	}
+
 	ret = id_startup(&id_data);
+
+
+	at24_shutdown();
+
 	if (ret != ID_EOK) {
 		return -1;
 	}
@@ -119,114 +141,6 @@ int logic_has_new_product_id(void)
 	return found_id_data;
 }
 
-#if 0
-id_keys_t dram_bus_group_keys[] = {
-	ID_KEY_sysconfig_reg,
-	ID_KEY_sharing_reg,
-	ID_KEY_power_reg,
-	ID_KEY_cs_cfg_reg,
-};
-
-int dram_bus_group_values[ARRAY_SIZE(dram_bus_group_keys)];
-
-id_keys_t dram_cs_group_keys[] = {
-	ID_KEY_mcfg_reg,
-	ID_KEY_mr_reg,
-	ID_KEY_rfr_ctrl_reg,
-	ID_KEY_emr2_reg,
-	ID_KEY_actim_ctrla_reg,
-	ID_KEY_actim_ctrlb_reg,
-	ID_KEY_dlla_ctrl_reg,
-};
-
-int dram_cs_group_values[ARRAY_SIZE(dram_cs_group_keys)];
-
-int logic_extract_ddr_timing(struct sdram_timings *timing)
-{
-	int ret;
-	struct id_cookie cookie, dram_bus_group_cookie;
-
-	if (!found_id_data)
-		return -1;
-
-	ret = id_init_cookie(&id_data, &cookie);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-
-	/* find /cpu0_bus_group from root */
-	ret = id_find_dict(&cookie, ID_KEY_cpu0_bus_group, IDENUM_DICT);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-
-	/* find /dram_bus_group from /cpu0_bus_group */
-	ret = id_find_dict(&cookie, ID_KEY_dram_bus_group, IDENUM_DICT);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-
-	dram_bus_group_cookie = cookie;
-	ret = id_find_numbers(&dram_bus_group_cookie, dram_bus_group_keys, ARRAY_SIZE(dram_bus_group_keys), dram_bus_group_values);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-
-	timing->name=NULL; /* No name in SDRAM data */
-	timing->sysconfig = dram_bus_group_values[0];
-	timing->sharing = dram_bus_group_values[1];
-	timing->power = dram_bus_group_values[2];
-	timing->cfg=dram_bus_group_values[3];
-
-
-	ret = id_find_dict(&dram_bus_group_cookie, ID_KEY_cs0_group, IDENUM_DICT);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-
-	ret = id_find_numbers(&dram_bus_group_cookie, dram_cs_group_keys, ARRAY_SIZE(dram_cs_group_keys), dram_cs_group_values);
-	if (ret != ID_EOK) {
-		return ret;
-	}
-	timing->mcfg[0] = dram_cs_group_values[0];
-	timing->mr[0] = dram_cs_group_values[1];
-	timing->rfr[0] = dram_cs_group_values[2];
-	timing->emr[0] = dram_cs_group_values[3];
-	timing->actima[0] = dram_cs_group_values[4];
-	timing->actimb[0] = dram_cs_group_values[5];
-	timing->dlla = dram_cs_group_values[6];
-	timing->offset = ((timing->mcfg[0]) >> 8 & 0x3ff) << 21;
-
-	ret = id_find_dict(&dram_bus_group_cookie, ID_KEY_cs1_group, IDENUM_DICT);
-	if (ret == ID_EOK) {
-		ret = id_find_numbers(&dram_bus_group_cookie, dram_cs_group_keys, ARRAY_SIZE(dram_cs_group_keys), dram_cs_group_values);
-		if (ret != ID_EOK) {
-			return ret;
-		}
-		timing->mcfg[1] = dram_cs_group_values[0];
-		timing->mr[1] = dram_cs_group_values[1];
-		timing->rfr[1] = dram_cs_group_values[2];
-		timing->emr[1] = dram_cs_group_values[3];
-		timing->actima[1] = dram_cs_group_values[4];
-		timing->actimb[1] = dram_cs_group_values[5];
-		timing->dllb = timing->dlla;
-	} else {
-		timing->mcfg[1] = 0;
-		timing->mr[1] = 0;
-		timing->rfr[1] = 0;
-		timing->emr[1] = 0;
-		timing->actima[1] = 0;
-		timing->actimb[1] = 0;
-		timing->dllb = 0;
-	}
-
-
-	/* Extract /sysconfig_reg */
-
-	
-	return 0;
-}
-#endif
 
 int logic_dump_serialization_info(void)
 {
@@ -357,3 +271,15 @@ int logic_extract_gpmc_timing(int cs, int *config_regs)
 	return ret;
 }
 
+int do_dump_id_data(cmd_tbl_t * cmdtp, int flag, int argc, char *const argv[])
+{
+	printf("id_data: mem_ptr %p root_offset %u root_size %u\n",
+		id_data.mem_ptr, id_data.root_offset, id_data.root_size);
+	return 1;
+}
+
+U_BOOT_CMD(
+	dump_id_data, 1, 1, do_dump_id_data,
+	"dump_id_data - dump product ID data",
+	"dump product ID data in human-readable form"
+);

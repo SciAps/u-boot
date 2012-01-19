@@ -44,12 +44,14 @@ struct id_key {
 /*
  * return a byte from the ID data at offset 'offset' and set *oor to zero
  * if offset is in range of the device.  If offset is out of range then
- * set *oor to non-zero
- */
-extern unsigned char id_fetch_byte(int offset, int *oor);
+ * set *oor to non-zero.  If mem_ptr is non-NULL use it as a pointer to
+ * a cached copy of the ID data */
+extern unsigned char id_fetch_byte(unsigned char *mem_ptr, int offset, int *oor);
 
 struct id_data {
-	unsigned char *mem_ptr;	/* pointer to memory to copy data into */
+	/* mem_ptr is a pointer to read the initial ID data into, then if not
+	 * null used to read a cached copy of the ID data from */
+	unsigned char *mem_ptr;
 	unsigned int root_size;
 	unsigned int root_offset;
 };
@@ -65,6 +67,7 @@ extern int id_startup(struct id_data *data);
  * to the callers as they don't need to know whats in it, just pass it around
  */
 struct id_cookie {
+	unsigned char *mem_ptr;		/* cache pointer to ID data */
 	unsigned int start_offset;	/* start offset from beginning of data */
 	unsigned int size;		/* size of data in bytes */
 	unsigned int offset;		/* current read offset */

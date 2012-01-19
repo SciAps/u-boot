@@ -58,6 +58,15 @@ int at24_wakeup(void)
 
 }
 
+int at24_shutdown(void)
+{
+	/* Restore GPIO_OE registers back to reset state (All input) */
+	gpio_i2c_config_pin(GPIO_I2C_SDATA, GPIO_I2C_INPUT);
+	gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_INPUT);
+	/* Restore pins back to their intended use */
+	gpio_i2c_restore_pins();
+}
+
 /* Send the offset to the AT24 chip */
 static int at24_send_offset(u32 offset)
 {

@@ -13,7 +13,7 @@ unsigned int extract_unsigned_pnum(struct id_cookie *cookie, int start_bit, int 
 
 	*err = ID_EOK;
 	for (;;) {
-		ch = id_fetch_byte(cookie->offset++, &oor);
+		ch = id_fetch_byte(cookie->mem_ptr, cookie->offset++, &oor);
 		if (oor != ID_EOK) {
 			*err = oor;
 			id_error("extract runs oor");
@@ -45,7 +45,7 @@ int extract_signed_pnum(struct id_cookie *cookie, int start_bit, int *err)
 
 	*err = ID_EOK;
 	for (;;) {
-		ch = id_fetch_byte(cookie->offset++, &oor);
+		ch = id_fetch_byte(cookie->mem_ptr, cookie->offset++, &oor);
 		if (oor != ID_EOK) {
 			*err = oor;
 			id_error("extract runs oor");

@@ -9,7 +9,7 @@ int id_whatis(struct id_cookie *cookie, idenum_t *type)
 	if (!cookie)
 		return -ID_EINVAL;
 
-	byte = id_fetch_byte(cookie->offset, &oor);
+	byte = id_fetch_byte(cookie->mem_ptr, cookie->offset, &oor);
 	if (oor != ID_EOK)
 		return -ID_ERANGE;
 

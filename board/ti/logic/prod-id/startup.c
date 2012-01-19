@@ -1,3 +1,5 @@
+#include <linux/stddef.h>
+#include <linux/string.h>
 #include "interface.h"
 #include "internals.h"
 #include "id-errno.h"
@@ -28,10 +30,16 @@ int id_startup(struct id_data *data)
 	struct id_checksums xsums;
 	unsigned char *mem_ptr = data->mem_ptr;
 
-	cookie.offset = 0;
+	/* Clear out data->mem_ptr since we want all the fetches to come
+	 * from the AT24 chip.  Once we've validated the CRCs, restore
+	 * data->mem_ptr to allow id_fetch_byte to read from data->mem_ptr
+	 * instead of the AT24 chip.  Should speed up accesses dramatically */
+	data->mem_ptr = NULL;
+
+	memset(&cookie, 0, sizeof(cookie));
 	/* Data starts with the header, should be 'LpId' */
 	for (i=0; i<4; ++i) {
-		byte = id_fetch_byte(cookie.offset, &err);
+		byte = id_fetch_byte(NULL, cookie.offset, &err);
 		if (mem_ptr)
 			mem_ptr[cookie.offset] = byte;
 		hdr.signature[i] = byte;
@@ -48,40 +56,40 @@ int id_startup(struct id_data *data)
 	}
 
 	/* First LE 8-bit value is ID format version */
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.id_fmt_ver = byte;
 	cookie.offset++;
 	
 	/* Second LE 8-bit value is currently not used */
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.unused0 = byte;
 	cookie.offset++;
 	
 	/* Next LE 16-bit value is length of data */
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.data_length = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.data_length |= byte << 8;
 	cookie.offset++;
 	
 	/* Next LE 16-bit value is xsum of header */
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.header = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.header |= byte << 8;
@@ -101,13 +109,13 @@ int id_startup(struct id_data *data)
 	}
 
 	/* Next LE 16-bit value is xsum of data */
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.data = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(cookie.offset, &err);
+	byte = id_fetch_byte(NULL, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.data |= byte << 8;
@@ -116,7 +124,7 @@ int id_startup(struct id_data *data)
 	/* Checksum the data (next id_len bytes), must match xsums.data */
 	xsum = 0;
 	for (i = 0; i < hdr.data_length; ++i) {
-		byte = id_fetch_byte(cookie.offset + i, &err);
+		byte = id_fetch_byte(NULL, cookie.offset + i, &err);
 		if (mem_ptr)
 			mem_ptr[cookie.offset + i] = byte;
 		if (err != ID_EOK) {
@@ -146,6 +154,11 @@ int id_startup(struct id_data *data)
 #if 0
 	id_printf("Data format version: %u\n", hdr.id_fmt_ver);	
 #endif	
+
+	/* Restore data->mem_ptr to allow id_fetch_byte to read
+	 * from the cached data instead of the AT24 chip */
+	data->mem_ptr = mem_ptr;
+
 	return ID_EOK;
 
 err_ret:
@@ -164,6 +177,7 @@ int id_init_cookie(struct id_data *data, struct id_cookie *cookie)
 {
 	if (!cookie)
 		return -ID_EINVAL;
+	cookie->mem_ptr = data->mem_ptr;
 	cookie->start_offset = data->root_offset;
 	cookie->size = data->root_size;
 	cookie->offset = cookie->start_offset;

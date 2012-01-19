@@ -19,4 +19,6 @@
  * MA 02111-1307 USA
  */
 
-extern at24_read(u32 offset, u8 *buf, u32 size);
+extern int at24_read(u32 offset, u8 *buf, u32 size);
+extern int at24_wakeup(void);
+extern int at24_shutdown(void);
