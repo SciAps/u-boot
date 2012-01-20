@@ -29,10 +29,10 @@ ID_KEY_START
 /* Manufacturing unique data for each SOM */
 ID_KEY_ENTRY(serialization_group)
 ID_KEY_ENTRY(serial_number)
-ID_KEY_ENTRY(lan_ethaddr1)
-ID_KEY_ENTRY(lan_ethaddr2)
-ID_KEY_ENTRY(lan_ethaddr3)
-ID_KEY_ENTRY(lan_ethaddr4)
+ID_KEY_ENTRY(wifi_ethaddr1)
+ID_KEY_ENTRY(wifi_ethaddr2)
+ID_KEY_ENTRY(wifi_ethaddr3)
+ID_KEY_ENTRY(wifi_ethaddr4)
 ID_KEY_ENTRY(nvs)
 
 /* BOM Model number infromation */
@@ -84,6 +84,12 @@ ID_KEY_ENTRY(config4_reg)
 ID_KEY_ENTRY(config5_reg)
 ID_KEY_ENTRY(config6_reg)
 ID_KEY_ENTRY(config7_reg)
+
+/* Manufacturing unique data for each SOM */
+ID_KEY_ENTRY(lan_ethaddr1)
+ID_KEY_ENTRY(lan_ethaddr2)
+ID_KEY_ENTRY(lan_ethaddr3)
+ID_KEY_ENTRY(lan_ethaddr4)
 
 /* End of keys */
 ID_KEY_END
