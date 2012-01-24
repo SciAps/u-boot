@@ -358,9 +358,9 @@ U_BOOT_CMD(
 "      /gN - set cursor position to anchor point 'N' ('A'+n)\n"
 "      /i - invert video colors\n"
 "      /b - backspace\n"
-"      /n - linefeed\n"
-"      /r - carriage_return"
-"      /k - clear to end of line"
+"      /r - carriage return\n"
+"      /n - carriage return + linefeed\n"
+"      /k - clear to end of line\n"
 "      /A - goto lcd_anchor value in environment (R,C in decimal)\n"
 );
 
