@@ -175,7 +175,7 @@
 #define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
 #define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
 #define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
-					"1792k(u-boot),256k(u-boot-env),"\
+					"1664k(u-boot),384k(u-boot-env),"\
 					"4m(kernel),-(fs)"
 #define CONFIG_NAND_SET_DEFAULT	/* Set default NAND access method */
 #define CONFIG_NAND_MULTIPLE_ECC	/* NAND has multiple ECC methods */
@@ -463,7 +463,7 @@ extern int omap3logic_flash_exists;
 /* Monitor at start of flash */
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_FLASH_BASE
 
-#define SMNAND_ENV_OFFSET		0x240000 /* environment starts here */
+#define SMNAND_ENV_OFFSET		0x220000 /* environment starts here */
 
 #if defined(CONFIG_CMD_NAND)
 #define CONFIG_NAND_OMAP_GPMC
@@ -476,7 +476,7 @@ extern int omap3logic_flash_exists;
 #endif
 
 #define CONFIG_ENV_ADDR			CONFIG_ENV_OFFSET
-#define CONFIG_ENV_RANGE		(2 * CONFIG_ENV_SIZE)
+#define CONFIG_ENV_RANGE		(3 * CONFIG_ENV_SIZE)
 
 /*
  * Support for relocation
