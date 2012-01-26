@@ -172,6 +172,9 @@ void set_default_env(const char *s);
 /* Import from binary representation into hash table */
 int env_import(const char *buf, int check);
 
+/* Check a read environment to see if its valid */
+int env_check_valid(const char *buf);
+
 #endif
 
 #endif	/* _ENVIRONMENT_H_ */

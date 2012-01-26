@@ -153,30 +153,64 @@ int env_init(void)
  * The legacy NAND code saved the environment in the first NAND device i.e.,
  * nand_dev_desc + 0. This is also the behaviour using the new NAND code.
  */
-int writeenv(size_t offset, u_char *buf)
+static int writeenv(size_t offset, u_char *buf)
 {
 	size_t end = offset + CONFIG_ENV_RANGE;
 	size_t amount_saved = 0;
 	size_t blocksize, len;
-
+	int ret, ncopies = 0;
 	u_char *char_ptr;
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	int current_ecc_method;
+#endif
+
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_default(&current_ecc_method);
+#endif
 
 	blocksize = nand_info[0].erasesize;
 	len = min(blocksize, CONFIG_ENV_SIZE);
 
-	while (amount_saved < CONFIG_ENV_SIZE && offset < end) {
+	while (offset < end) {
 		if (nand_block_isbad(&nand_info[0], offset)) {
 			offset += blocksize;
 		} else {
 			char_ptr = &buf[amount_saved];
-			if (nand_write(&nand_info[0], offset, &len,
-					char_ptr))
-				return 1;
-			offset += blocksize;
-			amount_saved += len;
+			/* Data written can not straddle a block in case
+			   one of the two blocks goes bad */
+			if ((offset & ~(blocksize - 1)) != ((offset + len - 1) & ~(blocksize - 1)))
+				offset = (offset + blocksize - 1) & ~(blocksize-1);
+
+			if (offset >= end)
+				break;
+
+			ret = nand_write(&nand_info[0], offset, &len,
+					char_ptr);
+
+			if (ret) {
+				/* Need to move offset forward by len,
+				 * then to the start of the next block,
+				 * reset amount_amount saved to start
+				 * at the beginning of the environment */
+				offset += len;
+				offset = (offset + blocksize - 1) & ~(blocksize - 1);
+				amount_saved = 0;
+			} else {
+				amount_saved += len;
+				if (amount_saved >= CONFIG_ENV_SIZE) {
+					ncopies++;
+					amount_saved = 0;
+				}
+			}
+			offset += len;
 		}
 	}
-	if (amount_saved != CONFIG_ENV_SIZE)
+
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_method(current_ecc_method);
+#endif
+
+	if (!ncopies)
 		return 1;
 
 	return 0;
@@ -192,9 +226,6 @@ int saveenv(void)
 	char	*res;
 	int	ret = 0;
 	nand_erase_options_t nand_erase_options;
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	int	current_ecc_method;
-#endif
 
 	memset(&nand_erase_options, 0, sizeof(nand_erase_options));
 	nand_erase_options.length = CONFIG_ENV_RANGE;
@@ -211,17 +242,10 @@ int saveenv(void)
 	env_new.crc   = crc32(0, env_new.data, ENV_SIZE);
 	env_new.flags = ++env_flags; /* increase the serial */
 
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	nand_switch_ecc_default(&current_ecc_method);
-#endif
-
 	if(gd->env_valid == 1) {
 		puts("Erasing redundant NAND...\n");
 		nand_erase_options.offset = CONFIG_ENV_OFFSET_REDUND;
 		if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-			nand_switch_ecc_ecc(current_ecc_method);
-#endif
 			return 1;
 		}
 
@@ -232,9 +256,6 @@ int saveenv(void)
 		puts("Erasing NAND...\n");
 		nand_erase_options.offset = CONFIG_ENV_OFFSET;
 		if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-			nand_switch_ecc_ecc(current_ecc_method);
-#endif
 			return 1;
 		}
 
@@ -244,17 +265,11 @@ int saveenv(void)
 	}
 	if (ret) {
 		puts("FAILED!\n");
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-		nand_switch_ecc_ecc(current_ecc_method);
-#endif
 		return 1;
 	}
 
 	puts("done\n");
 
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	nand_switch_ecc_method(current_ecc_method);
-#endif
 	gd->env_valid = (gd->env_valid == 2 ? 1 : 2);
 
 	return ret;
@@ -267,9 +282,6 @@ int saveenv(void)
 	ssize_t	len;
 	char	*res;
 	nand_erase_options_t nand_erase_options;
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	int current_ecc_method;
-#endif
 
 	memset(&nand_erase_options, 0, sizeof(nand_erase_options));
 	nand_erase_options.length = CONFIG_ENV_RANGE;
@@ -286,38 +298,26 @@ int saveenv(void)
 	}
 	env_new.crc   = crc32(0, env_new.data, ENV_SIZE);
 
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	nand_switch_ecc_default(&current_ecc_method);
-#endif
-	
 	puts("Erasing Nand...\n");
 	if (nand_erase_opts(&nand_info[0], &nand_erase_options)) {
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-		nand_switch_ecc_method(current_ecc_method);
-#endif
 		return 1;
 	}
 
 	puts("Writing to Nand... ");
 	if (writeenv(CONFIG_ENV_OFFSET, (u_char *)&env_new)) {
 		puts("FAILED!\n");
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-		nand_switch_ecc_method(current_ecc_method);
-#endif
 		return 1;
 	}
 
 	puts("done\n");
 
-#if defined(CONFIG_NAND_MULTIPLE_ECC)
-	nand_switch_ecc_method(current_ecc_method);
-#endif
 	return ret;
 }
 #endif /* CONFIG_ENV_OFFSET_REDUND */
 #endif /* CMD_SAVEENV */
 
-int readenv(size_t offset, u_char * buf)
+#ifdef CONFIG_ENV_OFFSET_REDUND
+static int readenv(size_t offset, u_char * buf)
 {
 	size_t end = offset + CONFIG_ENV_RANGE;
 	size_t amount_loaded = 0;
@@ -360,6 +360,73 @@ int readenv(size_t offset, u_char * buf)
 
 	return 0;
 }
+#else /* ! CONFIG_ENV_OFFSET_REDUND */
+/* Read the environment, checking along the way.  return 0 if valid
+ * environment or no environment is found, negative on error */
+static int readenv(size_t offset, u_char * buf)
+{
+	size_t end = offset + CONFIG_ENV_RANGE;
+	size_t amount_loaded = 0;
+	size_t blocksize, len;
+	u_char *char_ptr;
+	int ret;
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	int current_ecc_method;
+#endif
+
+	blocksize = nand_info[0].erasesize;
+	if (!blocksize)
+		return -1;
+	len = min(blocksize, CONFIG_ENV_SIZE);
+
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_default(&current_ecc_method);
+#endif
+
+	while (offset < end) {
+		if (nand_block_isbad(&nand_info[0], offset)) {
+			offset += blocksize;
+		} else {
+			char_ptr = &buf[amount_loaded];
+			/* Data read can not straddle a block in case
+			   one of the two blocks goes bad */
+			if ((offset & ~(blocksize - 1)) != ((offset + len - 1) & ~(blocksize - 1)))
+				offset = (offset + blocksize - 1) & ~(blocksize-1);
+			if (offset >= end)
+				break;
+
+			ret = nand_read(&nand_info[0], offset, &len, char_ptr);
+
+			if (ret) {
+				/* Need to move offset forward by len,
+				 * then to the start of the next block,
+				 * reset amount_amount saved to start
+				 * at the beginning of the environment */
+				offset += len;
+				offset = (offset + blocksize - 1) & ~(blocksize - 1);
+				amount_loaded = 0;
+			} else {
+				amount_loaded += len;
+				if (amount_loaded >= CONFIG_ENV_SIZE) {
+					if (env_check_valid(buf))
+						goto found;
+					amount_loaded = 0;
+				}
+			}
+			offset += len;
+		}
+	}
+
+found:
+#if defined(CONFIG_NAND_MULTIPLE_ECC)
+	nand_switch_ecc_method(current_ecc_method);
+#endif
+	if (amount_loaded != CONFIG_ENV_SIZE)
+		return 0;
+
+	return 1;
+}
+#endif
 
 #ifdef CONFIG_ENV_OFFSET_OOB
 int get_nand_env_oob(nand_info_t *nand, unsigned long *result)
@@ -399,6 +466,7 @@ void env_relocate_spec(void)
 #if !defined(ENV_IS_EMBEDDED)
 	int crc1_ok = 0, crc2_ok = 0;
 	env_t *ep, *tmp_env1, *tmp_env2;
+	int ret;
 
 	tmp_env1 = (env_t *)malloc(CONFIG_ENV_SIZE);
 	tmp_env2 = (env_t *)malloc(CONFIG_ENV_SIZE);
@@ -411,11 +479,11 @@ void env_relocate_spec(void)
 		return;
 	}
 
-	if (readenv(CONFIG_ENV_OFFSET, (u_char *) tmp_env1))
-		puts("No Valid Environment Area found\n");
+	ret = readenv(CONFIG_ENV_OFFSET, (u_char *) tmp_env1);
+	printf("%sValid Environment Area found\n", ret ? "No ":"");
 
-	if (readenv(CONFIG_ENV_OFFSET_REDUND, (u_char *) tmp_env2))
-		puts("No Valid Redundant Environment Area found\n");
+	ret = readenv(CONFIG_ENV_OFFSET_REDUND, (u_char *) tmp_env2);
+	printf("%sValid Redundant Environment Area found\n", ret ? "No ":"");
 
 	crc1_ok = (crc32(0, tmp_env1->data, ENV_SIZE) == tmp_env1->crc);
 	crc2_ok = (crc32(0, tmp_env2->data, ENV_SIZE) == tmp_env2->crc);
@@ -486,7 +554,7 @@ void env_relocate_spec (void)
 #endif
 
 	ret = readenv(CONFIG_ENV_OFFSET, (u_char *)buf);
-	if (ret) {
+	if (ret < 0) {
 		set_default_env("!readenv() failed");
 		return;
 	}

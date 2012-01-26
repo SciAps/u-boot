@@ -196,6 +196,14 @@ void set_default_env(const char *s)
 	gd->flags |= GD_FLG_ENV_READY;
 }
 
+int env_check_valid(const char *buf)
+{
+	env_t *ep = (env_t *)buf;
+	uint32_t crc;
+
+	memcpy(&crc, &ep->crc, sizeof(crc));
+	return crc32(0, ep->data, ENV_SIZE) == crc;
+}
 /*
  * Check if CRC is valid and (if yes) import the environment.
  * Note that "buf" may or may not be aligned.
@@ -205,11 +213,7 @@ int env_import(const char *buf, int check)
 	env_t *ep = (env_t *)buf;
 
 	if (check) {
-		uint32_t crc;
-
-		memcpy(&crc, &ep->crc, sizeof(crc));
-
-		if (crc32(0, ep->data, ENV_SIZE) != crc) {
+		if (!env_check_valid(buf)) {
 			set_default_env("!bad CRC");
 			return 0;
 		}
