@@ -1003,14 +1003,14 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 
 #ifdef CONFIG_SPLASH_SCREEN_ALIGN
 	if (x == BMP_ALIGN_CENTER)
-		x = max(0, (pwidth - width) / 2);
+		x = max(0, ((int)pwidth - (int)width) / 2);
 	else if (x < 0)
-		x = max(0, pwidth - width + x + 1);
+		x = max(0, (int)pwidth - (int)width + x + 1);
 
 	if (y == BMP_ALIGN_CENTER)
-		y = max(0, (panel_info.vl_row - height) / 2);
+		y = max(0, ((int)panel_info.vl_row - (int)height) / 2);
 	else if (y < 0)
-		y = max(0, panel_info.vl_row - height + y + 1);
+		y = max(0, (int)panel_info.vl_row - (int)height + y + 1);
 
 #endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 

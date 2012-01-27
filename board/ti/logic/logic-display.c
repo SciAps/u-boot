@@ -27,7 +27,7 @@
 #include <asm/arch/timer.h>
 #include <twl4030.h>
 #include <lcd.h>
-#include "splash-480x272.h"
+#include "splash-332x57.h"
 #include "logic-proto.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -285,7 +285,7 @@ struct logic_panel logic_panels[] = {
 
 
 
-static struct logic_panel *find_panel(void)
+struct logic_panel *logic_find_panel(void)
 {
 	char *p, *q, *r;
 	struct omap_custom_lcd_fields *f;
@@ -480,7 +480,7 @@ void lcd_ctrl_init(void *lcdbase)
 	struct panel_config dss_panel;
 
 	memset(&panel_info, 0, sizeof(panel_info));
-	panel = find_panel();
+	panel = logic_find_panel();
 	if (!panel)
 		return;
 

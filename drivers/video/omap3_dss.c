@@ -123,7 +123,7 @@ void omap3_dss_panel_config(const struct panel_config *panel_cfg)
 
     /* Calculate timing of DISPC_DIVISOR; LCD in 16:23, PCD in 0:7 */
     ret = omap3_dss_calc_divisor(panel_cfg->panel_type == 1,
-			    panel_cfg->pixel_clock, &divisor, &fck_div);
+			    panel_cfg->pixel_clock * 1000, &divisor, &fck_div);
     DSS_DBG_CLK("%s: Need to program CM_CLKSEL_DSS:clksel_dss1 to %u !\n", __FUNCTION__, fck_div);
     cm_clksel_dss = readl(&prcm_base->clksel_dss);
     DSS_DBG_CLK("%s: &cm_clksel_dss %p val %#x\n", __FUNCTION__, &prcm_base->clksel_dss, cm_clksel_dss);
@@ -221,7 +221,7 @@ found:
 	cinfo->pck_div = best_pd;
 	cinfo->lck = fck / cinfo->lck_div;
 	cinfo->pck = cinfo->lck / cinfo->pck_div;
-	DSS_DBG_CLK("%s: %d best_ld %u best_pd %u\n", __FUNCTION__, __LINE__, best_ld, best_pd);
+	DSS_DBG_CLK("%s: %d best_ld %u best_pd %u pck %lu\n", __FUNCTION__, __LINE__, best_ld, best_pd, cinfo->pck);
 }
 
 int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
@@ -231,13 +231,13 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 	unsigned long prate;
 	u16 fck_div, fck_div_max, fck_min_div = 1, fck_div_factor;
 	int min_fck_per_pck;
-	unsigned long fck, max_dss_fck = 173000; /* max DSS VP_CLK */
+	unsigned long fck, max_dss_fck = 173000000; /* max DSS VP_CLK */
 	u32 cpu_family = get_cpu_family();
 	struct dispc_clock_info cur_dispc;
 	struct dss_clock_info best_dss;
 	struct dispc_clock_info best_dispc;
 
-	prate = 864000; /* Fclk of DSS (864Mhz in Khz???) */
+	prate = 864000000; /* Fclk of DSS (864Mhz) */
 
 	memset(&best_dss, 0, sizeof(best_dss));
 	memset(&best_dispc, 0, sizeof(best_dispc));
@@ -252,12 +252,12 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 	fck_div_factor = 1;
 #endif
 
-	for (fck_div = fck_div_max; fck_div > fck_min_div; --fck_div) {
+	for (fck_div = fck_div_max; fck_div >= fck_min_div; --fck_div) {
 		DSS_DBG_CLK("%s:%d fck_div %d\n", __FUNCTION__, __LINE__, fck_div);
 		fck = prate / fck_div * fck_div_factor;
 
 		if (fck > max_dss_fck) {
-			DSS_DBG_CLK("%s:%d\n", __FUNCTION__, __LINE__);
+			DSS_DBG_CLK("%s:%d fck %lu > max_dss_fck %lu\n", __FUNCTION__, __LINE__, fck, max_dss_fck);
 			continue;
 		}
 
@@ -269,7 +269,7 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 
 		dispc_find_clk_divs(is_tft, req_pck, fck, &cur_dispc);
 
-		DSS_DBG_CLK("%s:%d cur.pck %ld < best_pck %ld?\n", __FUNCTION__, __LINE__,
+		DSS_DBG_CLK("%s:%d cur.pck %u < best_pck %u?\n", __FUNCTION__, __LINE__,
 			abs(cur_dispc.pck - req_pck),
 			abs(best_dispc.pck - req_pck));
 
@@ -289,7 +289,8 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 
 	/* Setup divisor */
 	*dispc_divisor = (cur_dispc.lck_div << 16) | cur_dispc.pck_div;
-	*result_fck_div = fck_div;
+	DSS_DBG_CLK("%s: fck_div %u best_dss.fck_div %u\n", __FUNCTION__, fck_div, best_dss.fck_div); 
+	*result_fck_div = best_dss.fck_div;
 	return 0;
 }
 
