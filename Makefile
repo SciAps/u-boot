@@ -1125,6 +1125,10 @@ clobber:	clean
 	@[ ! -d $(obj)nand_spl ] || find $(obj)nand_spl -name "*" -type l -print | xargs rm -f
 	@[ ! -d $(obj)onenand_ipl ] || find $(obj)onenand_ipl -name "*" -type l -print | xargs rm -f
 	@[ ! -d $(obj)mmc_spl ] || find $(obj)mmc_spl -name "*" -type l -print | xargs rm -f
+	@rm -f $(obj)include/config.h $(obj)include/config.mk \
+		$(obj)board/*/config.tmp $(obj)board/*/*/config.tmp \
+		$(obj)include/autoconf.mk $(obj)include/autoconf.mk.dep
+
 
 ifeq ($(OBJTREE),$(SRCTREE))
 mrproper \
