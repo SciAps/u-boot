@@ -176,7 +176,7 @@
 #define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
 #define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
-					"4m(kernel),-(fs)"
+					"4m(kernel),20m(ramdisk),-(fs)"
 #define CONFIG_NAND_SET_DEFAULT	/* Set default NAND access method */
 #define CONFIG_NAND_MULTIPLE_ECC	/* NAND has multiple ECC methods */
 #define CONFIG_TOUCHUP_ENV	/* Set board-specific environment vars */
@@ -242,30 +242,38 @@
 #define CONFIG_JFFS2_PART_SIZE		0xf980000	/* sz of jffs2 part */
 
 /* Environment information */
-#define CONFIG_BOOTDELAY	10
+#define CONFIG_BOOTDELAY	3
 
 #define CONFIG_BOOTFILE		uImage
 
 #define CONFIG_PREBOOT \
-	"echo ======================NOTICE============================;"\
-	"echo The u-boot environment is not set. - You are;"            \
-	"echo required to set a valid display for your LCD panel.;"	\
-	"echo Valid display options are:;"				\
-	"echo \"  2 == LQ121S1DG31     TFT SVGA    (12.1)  Sharp\";"	\
-	"echo \"  3 == LQ036Q1DA01     TFT QVGA    (3.6)   Sharp w/ASIC\";" \
-	"echo \"  5 == LQ064D343       TFT VGA     (6.4)   Sharp\";"	\
-	"echo \"  7 == LQ10D368        TFT VGA     (10.4)  Sharp\";"	\
-	"echo \" 15 == LQ043T1DG01     TFT WQVGA   (4.3)   Sharp (DEFAULT)\";" \
-	"echo \" vga[-16 OR -24]       LCD VGA     640x480\";"          \
-	"echo \" svga[-16 OR -24]      LCD SVGA    800x600\";"          \
-	"echo \" xga[-16 OR -24]       LCD XGA     1024x768\";"         \
-	"echo \" 720p[-16 OR -24]      LCD 720P    1280x720\";"         \
-	"echo \" sxga[-16 OR -24]      LCD SXGA    1280x1024\";"        \
-	"echo \" uxga[-16 OR -24]      LCD UXGA    1600x1200\";"        \
-	"echo MAKE SURE YOUR DISPLAY VARIABLE IS CORRECTLY ENTERED!;"	\
-	"setenv display 15;"						\
-	"setenv preboot;"						\
-	"saveenv;"
+	"echo ; "                                                                                \
+	"echo =================================== NOTICE ===================================;"   \
+	"echo \"The U-Boot environment was not found. If the display is not set properly     \";"\
+	"echo \"linux will not have video support.\";"	                                         \
+	"echo ; "                                                                                \
+	"echo \"Valid display options are:\";"                                                   \
+	"echo \"  2 == LQ121S1DG31     TFT SVGA    (12.1)  Sharp\";"	                         \
+	"echo \"  3 == LQ036Q1DA01     TFT QVGA    (3.6)   Sharp w/ASIC\";"                      \
+	"echo \"  5 == LQ064D343       TFT VGA     (6.4)   Sharp\";"	                         \
+	"echo \"  7 == LQ10D368        TFT VGA     (10.4)  Sharp\";"	                         \
+	"echo \" 15 == LQ043T1DG01     TFT WQVGA   (4.3)   Sharp (DEFAULT)\";"                   \
+	"echo \" vga[-16 OR -24]       LCD VGA     640x480\";"                                   \
+	"echo \" svga[-16 OR -24]      LCD SVGA    800x600\";"                                   \
+	"echo \" xga[-16 OR -24]       LCD XGA     1024x768\";"                                  \
+	"echo \" 720p[-16 OR -24]      LCD 720P    1280x720\";"                                  \
+	"echo \" sxga[-16 OR -24]      LCD SXGA    1280x1024\";"                                 \
+	"echo \" uxga[-16 OR -24]      LCD UXGA    1600x1200\";"                                 \
+	"echo ; "                                                                                \
+	"echo \"Default `display` environment variable is now being set to: 15\";"               \
+	"setenv display 15;"						                         \
+	"setenv preboot;"						                         \
+	"echo ; "                                                                                \
+	"echo \"At the U-Boot prompt type commands: `setenv display <num>`, then type\";"        \
+	"echo \"`saveenv` to save the environment to NAND flash.  This will avoid seeing\";"     \
+	"echo \"this notice on future boots\" ; "                                                \
+	"echo =================================== NOTICE ===================================;"   \
+	"echo ; " 
 
 #ifdef CONFIG_USB_TTY
 #define OMAP3LOGIC_USBTTY "usbtty=cdc_acm\0"
@@ -273,111 +281,200 @@
 #define OMAP3LOGIC_USBTTY
 #endif
 
+#define CONFIG_BOOTCOMMAND \
+	"run autoboot"
+	
+#define CONFIG_MMC_BOOTSCRIPT_NAME \
+        "boot.scr"
+
+/*****************************************************************************/
+/* Default Environment                                                       */
+/*                                                                           */
+/* When reconfiguring the boot environment, be sure to set the environment   */
+/* variables as indicated below for a successful boot.                       */
+/*                                                                           */
+/* - $kernel_location                                                        */
+/*   Must always be set.  Values can be ram, nand, mmc, or tftp.             */
+/*                                                                           */
+/* - $rootfs_location                                                        */
+/*   Must always be set.  Values can be ram, tftp, /dev, nfs, mmc, or nand.  */
+/*                                                                           */
+/* - $rootfs_type                                                            */
+/*   Must always be set.  Values can be ramdisk, jffs, yaffs, ext3, or nfs.  */
+/*                                                                           */
+/* - $loadaddr                                                               */
+/*   Must always be set.                                                     */
+/*                                                                           */
+/* - If booting from /dev based file system, then $rootfs_device must be     */
+/*   set.                                                                    */
+/* - If booting from a ramdisk image, then $ramdisksize, and $ramdiskaddr    */
+/*   must be set.                                                            */
+/* - If booting from an nfs location, then $serverip, $nfsrootpath, and      */
+/*   $nfsoptions must be set.                                                */
+/* - If booting from nand, $ramdisk_nand_offset, $ramdisk_nand_size,         */
+/*   $kernel_nand_offset, and $kernel_nand_size must be set.                 */
+/* - If booting from a file system, $ramdiskimage, and $kernelimage must be  */
+/*   set.                                                                    */
+/* - Optionally, a boot script named "boot.scr" can be placed in SD to       */
+/*   override any other boot scripts.                                        */
+/*****************************************************************************/
 #define CONFIG_EXTRA_ENV_SETTINGS \
+	OMAP3LOGIC_USBTTY \
+	"bootargs=\0" \
+	"otherbootargs=ignore_loglevel early_printk no_console_suspend \0" \
+	"consoledevice=ttyO0\0" \
+	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
 	"mtdids=" MTDIDS_DEFAULT "\0"	\
 	"mtdparts=" MTDPARTS_DEFAULT "\0"	\
-	"disablecharing=no\0" \
-	"autoboot=if mmc init; then " \
-			"if run loadbootscript; then " \
-				"run bootscript; " \
-			"else " \
-				"run defaultboot;" \
-			"fi; " \
-		"else run defaultboot; fi\0" \
-	"defaultboot=run mmcramboot\0" \
+	"disablecharging=no\0" \
+	"mmc_bootscript_addr=0x80FF0000\0" \
 	"disablecharging no\0" \
-	"loadaddr=0x81000000\0" \
-	"serverip=192.168.3.5\0" \
-	OMAP3LOGIC_USBTTY \
-	"consoledevice=ttyO0\0" \
 	"display=15\0" \
-	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
-	"dump_bootargs=echo 'Bootargs: '; echo $bootargs\0" \
-	"rotation=0\0" \
-	"rootdevice=/dev/mtdblock4\0" \
-	"vrfb_arg=if itest ${rotation} -ne 0; then " \
-			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
-		"fi\0" \
-	"otherbootargs=ignore_loglevel early_printk no_console_suspend\0" \
-	"addmtdparts=setenv bootargs ${bootargs} ${mtdparts}\0" \
-	"common_bootargs=setenv bootargs ${bootargs} display=${display} " \
-		"${otherbootargs};" \
-		"run addmtdparts; " \
-		"run vrfb_arg\0" \
-	"mmcrootdevice=/dev/mmcblk0p2\0" \
-	"mmcargs=run setconsole; setenv bootargs console=${console} " \
-		"root=${mmcrootdevice} rw " \
-		"rootfstype=ext3 rootwait\0" \
-	"rootfstype=yaffs2\0" \
-	"nandargs=run setconsole; setenv bootargs console=${console} " \
-		"root=${rootdevice} rw " \
-		"rootfstype=${rootfstype}\0" \
-	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
-	"bootscript=echo 'Running bootscript from mmc ...'; " \
-		"source ${loadaddr}\0" \
-	"loaduimage=mmc init; " \
-		"fatload mmc 0 ${loadaddr} ${bootfile}\0" \
-	"mmcboot=echo 'Booting from mmc ...'; " \
-		"run mmcargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"run loaduimage; " \
-		"bootm ${loadaddr}\0" \
-	"nandkerneloffset=0x280000\0" \
-	"nandkernelsize=0x300000\0" \
-	"nandboot=echo 'Booting from nand ...'; " \
-		"run nandargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"nand read.i ${loadaddr} ${nandkerneloffset} ${nandkernelsize}; " \
-		"bootm ${loadaddr}\0" \
-	"mtdboot=echo \"Booting kernel from ram w/${rootfstype} rootfs...\"; " \
-		"run nandargs; " \
-		"run common_bootargs; " \
-		"bootm ${loadaddr}\0" \
-	"tftpmtdboot=echo \"Booting kernel from tftp w/${rootfstype} rootfs...\"; " \
-		"run nandargs; " \
-		"run common_bootargs; " \
-		"tftpboot $loadaddr ${bootfile}; " \
-		"bootm ${loadaddr}\0" \
-	"rootpath=/opt/nfs-exports/ltib-omap\0" \
-	"nfsoptions=,wsize=1500,rsize=1500\0"				\
-	"nfsargs=run setconsole; setenv bootargs console=${console} " \
-		"root=/dev/nfs rw " \
-		"nfsroot=${serverip}:${rootpath}${nfsoptions} ip=dhcp\0" \
-	"nfsboot=echo 'Booting from network using NFS rootfs...'; " \
-		"run nfsargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"tftpboot $loadaddr ${bootfile}; "\
-		"bootm ${loadaddr}\0" \
+	"loadaddr=0x81000000\0" \
+	"kernel_location=mmc \0" \
+	"rootfs_location=mmc \0" \
+	"rootfs_type=ramdisk \0" \
+	"rootfs_device=/dev/mtdblock4 \0" \
 	"ramdisksize=64000\0" \
 	"ramdiskaddr=0x82000000\0" \
 	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
-	"ramargs=run setconsole; setenv bootargs console=${console} " \
-		"root=/dev/ram rw ramdisk_size=${ramdisksize}\0" \
-	"mmcramboot=echo 'Booting from mmc w/ramdisk...'; " \
-		"run ramargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"run loaduimage; " \
-		"fatload mmc 0 ${ramdiskaddr} ${ramdiskimage}; "\
-		"bootm ${loadaddr} ${ramdiskaddr}\0" \
-	"ramboot=echo 'Booting kernel/ramdisk rootfs from tftp...'; " \
-		"run ramargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"tftpboot ${loadaddr} ${bootfile}; "\
-		"tftpboot ${ramdiskaddr} ${ramdiskimage}; "\
-		"bootm ${loadaddr} ${ramdiskaddr}\0" \
-	"xipboot=echo 'Booting kernel/ramdisk rootfs from ram(assumed loaded from .elf file)...'; " \
-		"run ramargs; " \
-		"run common_bootargs; " \
-		"run dump_bootargs; " \
-		"bootm ${loadaddr} ${ramdiskaddr}\0"
+        "ramdisk_nand_offset=0x00680000\0" \
+        "ramdisk_nand_size=0x00d40000\0" \
+	"kernel_nand_offset=0x00280000 \0" \
+	"kernel_nand_size=0x00400000 \0" \
+	"kernelimage=uImage \0" \
+	"serverip=192.168.3.5\0" \
+	"nfsrootpath=/opt/nfs-exports/ltib-omap\0" \
+	"nfsoptions=,wsize=1500,rsize=1500\0"				\
+	"rotation=0\0" \
+        "autoboot=echo \"\n== Checking mmc1 for alternate boot script " CONFIG_MMC_BOOTSCRIPT_NAME " ==\"; " \
+	        "if mmc init; then " \
+			"if run loadbootscript; then " \
+			        "echo \"\"; " \
+			        "echo \"== Found script on mmc 1, starting ==\"; " \
+				"run bootscript; " \
+			"else " \
+			        "echo \"\"; " \
+			        "echo \"== Script not found on mmc 1, proceeding with defaultboot ==\"; " \
+				"run defaultboot;" \
+			"fi; " \
+		"else run defaultboot; fi\0" \
+	"loadbootscript=fatload mmc 1 $mmc_bootscript_addr " CONFIG_MMC_BOOTSCRIPT_NAME "\0" \
+	"bootscript=source ${mmc_bootscript_addr}\0" \
+	"vrfb_arg=if itest ${rotation} -ne 0; then " \
+			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
+		"fi\0" \
+	"dump_bootargs=echo \"\"; echo \"== Kernel bootargs ==\"; echo $bootargs; echo \"\"; \0" \
+	"dump_boot_sources=echo \"kernel_location: $kernel_location, " \
+			  "rootfs_location: $rootfs_location, " \
+			  "rootfs_type:     $rootfs_type\"; " \
+			  "echo \"\"; " \
+			  "\0" \
+	"load_kernel=if test $kernel_location = 'ram'; then " \
+		         "echo \"== kernel located at $loadaddr ==\"; " \
+			 "echo \"\"; " \
+			 "setenv bootm_arg1 ${loadaddr};" \
+		    "else if test $kernel_location = 'nand'; then " \
+			 "echo \"== Loading kernel from nand to $loadaddr ==\"; " \
+			 "nand read.i $loadaddr $kernel_nand_offset $kernel_nand_size; " \
+			 "echo \"\"; " \
+			 "setenv bootm_arg1 ${loadaddr};" \
+		    "else if test $kernel_location = 'mmc'; then " \
+			 "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
+			 "mmc init; " \
+			 "fatload mmc 1 $loadaddr $kernelimage; " \
+			 "echo \"\"; " \
+			 "setenv bootm_arg1 ${loadaddr};" \
+		    "else if test $kernel_location = 'tftp'; then " \
+			 "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
+			 "tftpboot $loadaddr $kernelimage; " \
+			 "echo \"\"; " \
+			 "setenv bootm_arg1 ${loadaddr};" \
+		    "else "\
+			 "echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; " \
+			 "echo \"\"; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi " \
+		    "\0" \
+	"load_rootfs=if test $rootfs_location = 'ram'; then " \
+		         "echo \"== rootfs located at $ramdiskaddr ==\"; " \
+			 "echo \"\"; " \
+			 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		    "else if test $rootfs_location = 'tftp'; then " \
+			 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
+			 "tftpboot $ramdiskaddr $ramdiskimage;" \
+			 "echo \"\"; " \
+			 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		    "else if test $rootfs_location = '/dev'; then " \
+			 "echo \"== rootfs located in $rootfs_device ==\"; " \
+			 "echo \"\"; " \
+			 "setenv bootargs ${bootargs} root=${rootfs_device}; " \
+			 "setenv bootm_arg2; " \
+		    "else if test $rootfs_location = 'nfs'; then " \
+			 "echo \"== rootfs located at $nfs_root_path on server $serverip ==\"; " \
+			 "echo \"\"; " \
+			 "setenv bootargs ${bootargs} root=/dev/nfs; " \
+			 "setenv bootm_arg2; " \
+		    "else if test $rootfs_location = 'mmc'; then " \
+			 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
+		         "fatload mmc 1 ${ramdiskaddr} ${ramdiskimage}; "\
+			 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		    "else if test $rootfs_location = 'nand'; then " \
+			 "echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; " \
+			 "nand read.i $ramdiskaddr $ramdisk_nand_offset $ramdisk_nand_size; " \
+			 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		    "else "\
+			 "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, or nand!! == \"; " \
+			 "echo \"\"; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi " \
+		    "\0" \
+	"set_rootfs_type=if test $rootfs_type = 'ramdisk'; then " \
+			 "setenv bootargs ${bootargs} root=/dev/ram rw ramdisk_size=${ramdisksize}; " \
+		    "else if test $rootfs_type = 'jffs'; then " \
+			 "setenv bootargs ${bootargs} rw rootfstype=jffs2;" \
+		    "else if test $rootfs_type = 'yaffs'; then " \
+			 "setenv bootargs ${bootargs} rw rootfstype=yaffs2;" \
+		    "else if test $rootfs_type = 'ext3'; then " \
+			 "setenv bootargs ${bootargs} rw rootfstype=ext3 rootwait; " \
+		    "else if test $rootfs_type = 'nfs'; then " \
+			 "setenv bootargs ${bootargs} rw nfsroot=${serverip}:${nfsrootpath}${nfsoptions} ip=dhcp; " \
+		    "else "\
+			 "echo \"$rootfs_type must be set to ramdisk, jffs, yaffs, ext3, or nfs\"; " \
+			 "echo \"\"; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi; " \
+		    "fi " \
+		    "\0" \
+	"addmtdparts=setenv bootargs ${bootargs} ${mtdparts} \0" \
+	"common_bootargs=" \
+	"                 setenv bootargs ${bootargs} display=${display} ${otherbootargs}; " \
+	"                 run addmtdparts; " \
+	"                 run vrfb_arg; " \
+        "                 \0" \
+	"dump_run_bootm=" \
+	"     echo \"bootm $bootm_arg1 $bootm_arg2\"; " \
+	"     echo \"\"; " \
+	"     bootm $bootm_arg1 $bootm_arg2\0" \
+	"defaultboot=" \
+	"     run dump_boot_sources; " \
+	"     run setconsole; setenv bootargs console=${console}; " \
+	"     run common_bootargs; " \
+	"     run load_kernel; " \
+	"     run load_rootfs; " \
+        "     run set_rootfs_type; " \
+	"     run dump_bootargs; " \
+	"     run dump_run_bootm; " \
+	"\0"
 
-#define CONFIG_BOOTCOMMAND \
-	"run autoboot"
 
 #define CONFIG_AUTO_COMPLETE	1
 /*
