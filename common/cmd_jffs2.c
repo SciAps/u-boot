@@ -106,6 +106,8 @@
 #include <onenand_uboot.h>
 #endif
 
+#include "mtd_parts.h"
+
 /* enable/disable debugging messages */
 #define	DEBUG_JFFS
 #undef	DEBUG_JFFS
@@ -205,6 +207,7 @@ static int mtd_device_validate(u8 type, u8 num, u32 *size)
 	return 1;
 }
 
+#if 0
 /**
  * Parse device id string <dev-id> := 'nand'|'nor'|'onenand'<dev-num>,
  * return device type and number.
@@ -244,6 +247,7 @@ static int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *d
 		*ret_id = p;
 	return 0;
 }
+#endif
 
 /*
  * 'Static' version of command line mtdparts_init() routine. Single partition on
@@ -378,7 +382,7 @@ int mtdparts_init(void)
 		dev_name = "nor0";
 #endif
 
-		if ((mtd_id_parse(dev_name, NULL, &id->type, &id->num) != 0) ||
+		if ((mtd_id_parse(dev_name, NULL, &id->type, &id->num, 0) != 0) ||
 				(mtd_device_validate(id->type, id->num, &size) != 0)) {
 			printf("incorrect device: %s%d\n", MTD_DEV_TYPE(id->type), id->num);
 			free(current_mtd_dev);

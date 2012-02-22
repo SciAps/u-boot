@@ -176,7 +176,7 @@
 #define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
 #define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
-					"4m(kernel),20m(ramdisk),-(fs)"
+					"5m(kernel),20m(ramdisk),-(fs)"
 #define CONFIG_NAND_SET_DEFAULT	/* Set default NAND access method */
 #define CONFIG_NAND_MULTIPLE_ECC	/* NAND has multiple ECC methods */
 #define CONFIG_TOUCHUP_ENV	/* Set board-specific environment vars */

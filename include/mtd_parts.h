@@ -25,6 +25,11 @@
 #define __MTD_PARTS_H__
 extern int mtd_get_part_priv(const char *partname, int *idx,
 			struct mtd_device **dev, loff_t *off,
-			loff_t *size, void **cookie, void **priv);
+			loff_t *size, void **cookie, void **priv, int quiet);
+
 extern void mtd_set_part_priv(void *cookie, void *priv);
+
+extern int mtd_id_parse(const char *id, const char **ret_id,
+			u8 *dev_type, u8 *dev_num, int quiet);
+extern int mtdparts_init(void);
 #endif

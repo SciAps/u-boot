@@ -248,7 +248,7 @@ static struct yaffs_dev *yaffsfs_FindDevice(const char *path, char **restOfPath,
 		(*restOfPath)++;
 
 	/* Find the partition */
-	ret = mtd_get_part_priv(partname, &part_idx, &dev, &part_off, &part_size, &cookie, &part_priv);
+	ret = mtd_get_part_priv(partname, &part_idx, &dev, &part_off, &part_size, &cookie, &part_priv, 1);
 	if (ret)
 		return NULL;
 
@@ -295,7 +295,17 @@ static struct yaffs_dev *yaffsfs_FindDevice(const char *path, char **restOfPath,
 #if 0
 		printf("%s: part_off %x part_size %x startBlock %u endBlock %u\n", __FUNCTION__, (unsigned int)part_off, (unsigned int)part_size, param->start_block, param->end_block);
 #endif
-		param->n_reserved_blocks = 5;
+		i = param->end_block - param->start_block + 1;
+
+		/* limit number of reserved blocks to 10% of available space;
+		 * 3 minimum, 8 maximum */
+		param->n_reserved_blocks = i/10;
+		if (param->n_reserved_blocks > 8)
+			param->n_reserved_blocks = 8;
+		if (param->n_reserved_blocks < 3)
+			param->n_reserved_blocks = 3;
+		
+
 
 		param->write_chunk_tags_fn = nandmtd2_write_chunk_tags;
 		param->read_chunk_tags_fn = nandmtd2_read_chunk_tags;
@@ -363,15 +373,13 @@ loff_t yaffs_freespace(const char *path)
 
 	yaffsfs_Lock();
 	dev = yaffsfs_FindDevice(path,&dummy, YAFFSFS_ACTION_FIND);
-	if(dev  && dev->is_mounted)
-	{
+	if (!dev) {
+		yaffsfs_set_error(-ENODEV);
+	} else if(dev->is_mounted) {
 		retVal = yaffs_get_n_free_chunks(dev);
 		retVal *= dev->data_bytes_per_chunk;
-
-	}
-	else
-	{
-		yaffsfs_set_error(-EINVAL);
+	} else {
+		yaffsfs_set_error(-EPERM);
 	}
 
 	yaffsfs_Unlock();
@@ -538,6 +546,7 @@ int yaffsfs_mount(const char *path)
 			result = yaffs_guts_initialise(dev);
 			if(result == YAFFS_FAIL)
 			{
+				yaffsfs_FindDevice(path, &dummy, YAFFSFS_ACTION_DESTROY);
 				// todo error - mount failed
 				yaffsfs_set_error(-ENOMEM);
 			}
@@ -969,7 +978,7 @@ int yaffs_rename(const YCHAR *oldPath, const YCHAR *newPath)
 
 static int yaffsfs_DoStat(struct yaffs_obj *obj,struct yaffs_stat *buf)
 {
-	int retVal = -1;
+	int retVal = -ENOENT;
 
 	obj = yaffs_get_equivalent_obj(obj);
 
@@ -1033,7 +1042,7 @@ static int yaffsfs_DoStatOrLStat(const char *path, struct yaffs_stat *buf,int do
 	else
 	{
 		// todo error not found
-		yaffsfs_set_error(-ENOENT);
+		yaffsfs_set_error((retVal = -ENOENT));
 	}
 
 	yaffsfs_Unlock();
@@ -1169,7 +1178,7 @@ static int yaffsfs_PutHandle(int handle)
 }
 
 
-int yaffs_open_sharing(const YCHAR *path, int oflag, int mode, int sharing)
+int yaffsfs_open_sharing(const YCHAR *path, int oflag, int mode, int sharing)
 {
 	struct yaffs_obj *obj = NULL;
 	struct yaffs_obj *dir = NULL;
@@ -1392,7 +1401,7 @@ int yaffs_open_sharing(const YCHAR *path, int oflag, int mode, int sharing)
 
 int yaffs_open(const YCHAR *path, int oflag, int mode)
 {
-	return yaffs_open_sharing(path, oflag, mode,
+	return yaffsfs_open_sharing(path, oflag, mode,
 			YAFFS_SHARE_READ | YAFFS_SHARE_WRITE);
 }
 
@@ -1424,6 +1433,68 @@ int yaffs_close(int handle)
 	yaffsfs_Unlock();
 
 	return retVal;
+}
+
+int yaffsfs_do_write(int handle, const void *buf, unsigned int nbyte)
+{
+	yaffsfs_FileDes *fd = NULL;
+	struct yaffs_obj *obj = NULL;
+	int pos = 0;
+	int nWritten = -1;
+	int writeThrough = 0;
+
+	yaffsfs_Lock();
+	fd = yaffsfs_HandleToFileDes(handle);
+	obj = yaffsfs_HandleToObject(handle);
+
+	if(!fd || !obj)
+	{
+		// bad handle
+		yaffsfs_set_error(-EBADF);
+	}
+	else if( fd && obj && !fd->writing)
+	{
+		yaffsfs_set_error(-EPERM);
+	}
+	else if( fd && obj)
+	{
+		if(fd->append)
+		{
+			pos =  yaffs_get_obj_length(obj);
+		}
+		else
+		{
+			pos = fd->position;
+		}
+
+		nWritten = yaffs_wr_file(obj,buf,pos,nbyte,writeThrough);
+
+		if(nWritten >= 0)
+		{
+			fd->position = pos + nWritten;
+
+			/* If amount written not same as nbytes then
+			 * filesystem must have run out of space */
+			if (nWritten != nbyte)
+				yaffsfs_set_error(-ENOSPC);
+		}
+		else
+		{
+			//todo error
+		}
+
+	}
+
+	yaffsfs_Unlock();
+
+
+	return (nWritten >= 0) ? nWritten : -1;
+
+}
+
+int yaffs_write(int handle, void *buf, unsigned int nbyte)
+{
+	return yaffsfs_do_write(handle, buf, nbyte);
 }
 
 int yaffsfs_do_read(int handle, void *vbuf, unsigned int nbyte, int isPread, int offset)
@@ -1640,13 +1711,18 @@ int yaffs_DumpDevStruct(const char *path)
 		struct yaffs_dev *dev = obj->my_dev;
 
 		printf("\n"
+			   "nStartBlock.......... %d\n"
+			   "nEndBlock............ %d\n"
+			   "nReserveredBlocks.... %d\n"
 			   "nPageWrites.......... %d\n"
 			   "nPageReads........... %d\n"
 			   "nBlockErasures....... %d\n"
 			   "nGCCopies............ %d\n"
 			   "garbageCollections... %d\n"
-			   "passiveGarbageColl'ns %d\n"
-			   "\n",
+			   "passiveGarbageColl'ns %d\n",
+				dev->param.start_block,
+				dev->param.end_block,
+				dev->param.n_reserved_blocks,
 				dev->n_page_writes,
 				dev->n_page_reads,
 				dev->n_erasures,

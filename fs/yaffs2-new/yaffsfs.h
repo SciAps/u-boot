@@ -48,8 +48,11 @@ struct yaffs_stat {
     unsigned long yst_ctime;    /* time of last change */
 };
 
+extern loff_t yaffs_freespace(const YCHAR *path);
+extern int yaffs_unlink(const YCHAR *path);
 extern int yaffs_open(const char *path, int oflag, int mode) ;
 extern int yaffs_read(int fd, void *buf, unsigned int nbyte) ;
+extern int yaffs_write(int fd, void *buf, unsigned int nbyte) ;
 extern int yaffs_close(int fd);
 extern yaffs_DIR *yaffs_opendir(const char *dirname);
 extern struct yaffs_dirent *yaffs_readdir(yaffs_DIR *dirp);

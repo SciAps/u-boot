@@ -1039,9 +1039,10 @@ static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_
  * @param ret_id output pointer to next char after parse completes (output)
  * @param dev_type parsed device type (output)
  * @param dev_num parsed device number (output)
- * @return 0 on success, 1 otherwise
+ * @param quiet non-zero to suppress messages
+ * @return 0 on success, -ERRNO otherwise
  */
-int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num)
+int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num, int quiet)
 {
 	const char *p = id;
 
@@ -1056,13 +1057,15 @@ int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num)
 		*dev_type = MTD_DEV_TYPE_ONENAND;
 		p += 7;
 	} else {
-		printf("incorrect device type in %s\n", id);
-		return 1;
+		if (!quiet)
+			printf("incorrect device type in %s\n", id);
+		return -ENODEV;
 	}
 
 	if (!isdigit(*p)) {
-		printf("incorrect device number in %s\n", id);
-		return 1;
+		if (!quiet)
+			printf("incorrect device number in %s\n", id);
+		return -ERANGE;
 	}
 
 	*dev_num = simple_strtoul(p, (char **)&p, 0);
@@ -1342,14 +1345,16 @@ static void list_partitions(void)
  * @param dev pointer to the requested device (output)
  * @param part_num verified partition number (output)
  * @param part pointer to requested partition (output)
+ * @param quiet non-zero to suppress messages
  * @return 0 on success, 1 otherwise
  */
 int find_dev_and_part(const char *id, struct mtd_device **dev,
-		u8 *part_num, struct part_info **part)
+		u8 *part_num, struct part_info **part, int quiet)
 {
 	struct list_head *dentry, *pentry;
 	u8 type, dnum, pnum;
 	const char *p;
+	int ret;
 
 	debug("--- find_dev_and_part ---\nid = %s\n", id);
 
@@ -1369,26 +1374,31 @@ int find_dev_and_part(const char *id, struct mtd_device **dev,
 	*part = NULL;
 	*part_num = 0;
 
-	if (mtd_id_parse(p, &p, &type, &dnum) != 0)
-		return 1;
+	ret = mtd_id_parse(p, &p, &type, &dnum, quiet);
+	if (ret != 0)
+		return ret;
 
 	if ((*p++ != ',') || (*p == '\0')) {
-		printf("no partition number specified\n");
+		if (!quiet)
+			printf("no partition number specified\n");
 		return 1;
 	}
 	pnum = simple_strtoul(p, (char **)&p, 0);
 	if (*p != '\0') {
-		printf("unexpected trailing character '%c'\n", *p);
+		if (!quiet)
+			printf("unexpected trailing character '%c'\n", *p);
 		return 1;
 	}
 
 	if ((*dev = device_find(type, dnum)) == NULL) {
-		printf("no such device %s%d\n", MTD_DEV_TYPE(type), dnum);
+		if (!quiet)
+			printf("no such device %s%d\n", MTD_DEV_TYPE(type), dnum);
 		return 1;
 	}
 
 	if ((*part = mtd_part_info(*dev, pnum)) == NULL) {
-		printf("no such partition\n");
+		if (!quiet)
+			printf("no such partition\n");
 		*dev = NULL;
 		return 1;
 	}
@@ -1410,7 +1420,7 @@ static int delete_partition(const char *id)
 	struct mtd_device *dev;
 	struct part_info *part;
 
-	if (find_dev_and_part(id, &dev, &pnum, &part) == 0) {
+	if (find_dev_and_part(id, &dev, &pnum, &part, 0) == 0) {
 
 		debug("delete_partition: device = %s%d, partition %d = (%s) 0x%08x@0x%08x\n",
 				MTD_DEV_TYPE(dev->id->type), dev->id->num, pnum,
@@ -1617,7 +1627,7 @@ static int parse_mtdids(const char *const ids)
 
 		ret = 1;
 		/* parse 'nor'|'nand'|'onenand'<dev-num> */
-		if (mtd_id_parse(p, &p, &type, &num) != 0)
+		if (mtd_id_parse(p, &p, &type, &num, 0) != 0)
 			break;
 
 		if (*p != '=') {
@@ -1815,7 +1825,7 @@ int mtdparts_init(void)
 
 		debug("--- getting current partition: %s\n", tmp_ep);
 
-		if (find_dev_and_part(tmp_ep, &cdev, &pnum, &p) == 0) {
+		if (find_dev_and_part(tmp_ep, &cdev, &pnum, &p, 0) == 0) {
 			current_mtd_dev = cdev;
 			current_mtd_partnum = pnum;
 			current_save();
@@ -1898,7 +1908,7 @@ int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 1;
 	}
 
-	if (find_dev_and_part(argv[1], &dev, &pnum, &part) != 0)
+	if (find_dev_and_part(argv[1], &dev, &pnum, &part, 0) != 0)
 		return 1;
 
 	current_mtd_dev = dev;
@@ -1965,7 +1975,7 @@ int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		struct mtdids *id;
 		struct part_info *p;
 
-		if (mtd_id_parse(argv[2], NULL, &type, &num) != 0)
+		if (mtd_id_parse(argv[2], NULL, &type, &num, 0) != 0)
 			return 1;
 
 		if ((id = id_find(type, num)) == NULL) {
@@ -2093,7 +2103,7 @@ U_BOOT_CMD(
 );
 /***************************************************/
 
-int mtd_get_part_priv(const char *partname, int *idx, struct mtd_device **dev, loff_t *off, loff_t *size, void **cookie, void **priv)
+int mtd_get_part_priv(const char *partname, int *idx, struct mtd_device **dev, loff_t *off, loff_t *size, void **cookie, void **priv, int quiet)
 {
 	int ret;
 	u8 pnum;
@@ -2104,12 +2114,13 @@ int mtd_get_part_priv(const char *partname, int *idx, struct mtd_device **dev, l
 	if (ret)
 		return ret;
 
-	ret = find_dev_and_part(partname, &mtd_dev, &pnum, &part);
+	ret = find_dev_and_part(partname, &mtd_dev, &pnum, &part, quiet);
 	if (ret)
 		return ret;
 
 	if (mtd_dev->id->type != MTD_DEV_TYPE_NAND) {
-		puts("not a NAND device\n");
+		if (!quiet)
+			puts("not a NAND device\n");
 		return -1;
 	}
 

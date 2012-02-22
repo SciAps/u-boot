@@ -77,7 +77,7 @@ struct mtdids {
 /* common/cmd_jffs2.c */
 extern int mtdparts_init(void);
 extern int find_dev_and_part(const char *id, struct mtd_device **dev,
-				u8 *part_num, struct part_info **part);
+			u8 *part_num, struct part_info **part, int quiet);
 extern struct mtd_device *device_find(u8 type, u8 num);
 
 #endif /* load_kernel_h */

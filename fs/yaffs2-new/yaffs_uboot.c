@@ -66,37 +66,49 @@ void yaffs_startup(void)
 int cmd_yaffs_mount(const char *mp)
 {
 	int retval;
+	char *p;
 
 	yaffsfs_set_error(0);
 	yaffs_startup();
 	retval = yaffsfs_mount(mp);
-	if (retval == -1)
-		printf("Error mounting %s, return value: %d\n", mp, yaffsfs_get_error());
-	return yaffsfs_get_error();
+	if (retval == -1) {
+		retval = yaffsfs_get_error(&p);
+		printf("Failed: %s\n", p);
+	}
+	return yaffsfs_get_error(NULL);
 }
 
 int cmd_yaffs_umount(char *mp)
 {
+	char *p;
+	int retval;
+
 	yaffsfs_set_error(0);
-	if (yaffsfs_unmount(mp) == -1)
-		printf("Error unmounting %s, return value: %d\n", mp, yaffsfs_get_error());
-	return yaffsfs_get_error();
+	if (yaffsfs_unmount(mp) == -1) {
+		retval = yaffsfs_get_error(&p);
+		printf("Failed: %s\n", p);
+	}
+	return yaffsfs_get_error(NULL);
 }
 
 int cmd_yaffs_ls(const char *mountpt, int longlist)
 {
-	int i;
+	int i, ret;
 	yaffs_DIR *d;
 	yaffs_dirent *de;
 	struct yaffs_stat stat;
 	char tempstr[255];
+	char *p;
+
+	yaffsfs_set_error(0);
 
 	d = yaffs_opendir(mountpt);
 
 	if(!d)
 	{
-		printf("opendir failed\n");
-		return -EINVAL;
+		ret = yaffsfs_get_error(&p);
+		printf("%s: %s\n", mountpt, p);
+		return ret;
 	}
 	else
 	{
@@ -119,69 +131,128 @@ int cmd_yaffs_ls(const char *mountpt, int longlist)
 
 int cmd_yaffs_df(const char *path, loff_t *size)
 {
-	return -EINVAL;
+	loff_t free_space;
+	int ret = 0;
+	char *p;
+
+	yaffsfs_set_error(0);
+
+	free_space = yaffs_freespace(path);
+	if (free_space == -1) {
+		ret = yaffsfs_get_error(&p);
+		printf("Failed: %s\n", p);
+	} else
+		*size = free_space;
+
+	return ret;
 }
 
 int cmd_yaffs_mwrite_file(char *fn, char *addr, int size)
 {
-	return -EINVAL;
+	int h, ret;
+	char *p;
+
+	yaffsfs_set_error(0);
+	printf ("Copy 0x%p to %s ... ", addr, fn);
+	h = yaffs_open(fn, O_CREAT | O_RDWR | O_TRUNC, S_IREAD | S_IWRITE);
+	if (h >= 0) {
+
+		yaffs_write(h,addr,size);
+		yaffs_close(h);
+
+	}
+
+	ret = yaffsfs_get_error(&p);
+	if (ret)
+		printf("[Failed: %s]\n", p);
+	else
+		printf("[DONE]\n");
+
+	return ret;
 }
 
 int cmd_yaffs_mread_file(char *fn, char *addr, long *size)
 {
-	int h;
+	int h, ret;
 	struct yaffs_stat s;
+	char *p;
+
+	yaffsfs_set_error(0);
+	printf ("Copy %s to 0x%p... ", fn, addr);
 
 	yaffs_stat(fn,&s);
-
-	printf ("Copy %s to 0x%p... ", fn, addr);
 	h = yaffs_open(fn, O_RDWR,0);
-	if(h<0)
-	{
-		printf("File not found\n");
-		return -ENOENT;
+	if (h<0) {
+		yaffsfs_set_error(-ENOENT);
+	} else {
+		yaffs_read(h,addr,(int)s.st_size);
+		yaffs_close(h);
 	}
 
-	yaffs_read(h,addr,(int)s.st_size);
-	printf("\t[DONE]\n");
-	*size = s.st_size;
+	ret = yaffsfs_get_error(&p);
+	if (ret)
+		printf("[Failed: %s]\n", p);
+	else {
+		printf("[DONE]\n");
+		*size = s.st_size;
+	}
 
-	yaffs_close(h);
-	return yaffsfs_get_error();
+	return ret;
 }
 
 int cmd_yaffs_mkdir(const char *dir)
 {
-	int retval = yaffs_mkdir(dir, 0);
+	int ret;
+	char *p;
 
-	if ( retval < 0)
-		printf("yaffs_mkdir returning error: %d\n", yaffsfs_get_error());
-	return yaffsfs_get_error();
+	yaffsfs_set_error(0);
+	ret = yaffs_mkdir(dir, 0);
+	if (ret < 0) {
+		ret = yaffsfs_get_error(&p);
+		printf("[Failed: %p]\n", p);
+	}
+	return ret;
 }
 
 int cmd_yaffs_rmdir(const char *dir)
 {
-	int retval = yaffs_rmdir(dir);
+	int ret;
+	char *p;
 
-	if ( retval < 0)
-		printf("yaffs_rmdir returning error: %d\n", yaffsfs_get_error());
-	return yaffsfs_get_error();
+	yaffsfs_set_error(0);
+	ret = yaffs_rmdir(dir);
+	if (ret < 0) {
+		ret = yaffsfs_get_error(&p);
+		printf("[Failed: %s]\n", p);
+	}
+	return ret;
 }
 
 int cmd_yaffs_rm(const char *path)
 {
-	int retval = yaffs_unlink(path);
+	int ret;
+	char *p;
 
-	if ( retval < 0)
-		printf("yaffs_unlink returning error: %d\n", yaffsfs_get_error());
-	return yaffsfs_get_error();
+	yaffsfs_set_error(0);
+	ret = yaffs_unlink(path);
+	if (ret < 0) {
+		ret = yaffsfs_get_error(&p);
+		printf("[Failed: %s]\n", p);
+	}
+	return ret;
 }
 
 int cmd_yaffs_mv(const char *oldPath, const char *newPath)
 {
-	int retval = yaffs_rename(newPath, oldPath);
+	int ret;
+	char *p;
 
-	if ( retval < 0)
-		printf("yaffs_unlink returning error: %d\n", yaffsfs_get_error());
-	return yaffsfs_get_error();
+	yaffsfs_set_error(0);
+	ret = yaffs_rename(newPath, oldPath);
+
+	if (ret < 0) {
+		ret = yaffsfs_get_error(&p);
+		printf("[Failed: %s]\n", p);
+	}
+	return ret;
 }

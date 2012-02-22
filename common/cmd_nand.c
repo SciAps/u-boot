@@ -29,12 +29,7 @@
 #include <nand.h>
 
 #if defined(CONFIG_CMD_MTDPARTS)
-
-/* partition handling routines */
-int mtdparts_init(void);
-int id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
-int find_dev_and_part(const char *id, struct mtd_device **dev,
-		      u8 *part_num, struct part_info **part);
+#include "mtd_parts.h"
 #endif
 
 static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
@@ -148,7 +143,7 @@ static int get_part(const char *partname, int *idx, loff_t *off, loff_t *size)
 	if (ret)
 		return ret;
 
-	ret = find_dev_and_part(partname, &dev, &pnum, &part);
+	ret = find_dev_and_part(partname, &dev, &pnum, &part, 0);
 	if (ret)
 		return ret;
 
@@ -842,7 +837,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	if (argc >= 2) {
 		char *p = (argc == 2) ? argv[1] : argv[2];
 		if (!(str2long(p, &addr)) && (mtdparts_init() == 0) &&
-		    (find_dev_and_part(p, &dev, &pnum, &part) == 0)) {
+			(find_dev_and_part(p, &dev, &pnum, &part, 0) == 0)) {
 			if (dev->id->type != MTD_DEV_TYPE_NAND) {
 				puts("Not a NAND device\n");
 				return 1;

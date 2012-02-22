@@ -184,7 +184,7 @@ U_BOOT_CMD(
 );
 
 U_BOOT_CMD(
-    ydf,    2,  0,  do_yls,
+    ydf,    2,  0,  do_ydf,
     "YAFFS disk free",
     "[-l] <dirname>"
 );

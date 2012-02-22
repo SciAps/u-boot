@@ -33,12 +33,7 @@
 
 #if defined(CONFIG_CMD_MTDPARTS)
 #include <jffs2/jffs2.h>
-
-/* partition handling routines */
-int mtdparts_init(void);
-int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
-int find_dev_and_part(const char *id, struct mtd_device **dev,
-		u8 *part_num, struct part_info **part);
+#include "mtd_parts.h"
 #endif
 
 #ifndef CONFIG_SYS_NO_FLASH
@@ -359,9 +354,9 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 #if defined(CONFIG_CMD_MTDPARTS)
 	/* erase <part-id> - erase partition */
-	if ((argc == 2) && (mtd_id_parse(argv[1], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 2) && (mtd_id_parse(argv[1], NULL, &dev_type, &dev_num, 0) == 0)) {
 		mtdparts_init();
-		if (find_dev_and_part(argv[1], &dev, &pnum, &part) == 0) {
+		if (find_dev_and_part(argv[1], &dev, &pnum, &part, 0) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
 				bank = dev->id->num;
 				info = &flash_info[bank];
@@ -555,9 +550,9 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 #if defined(CONFIG_CMD_MTDPARTS)
 	/* protect on/off <part-id> */
-	if ((argc == 3) && (mtd_id_parse(argv[2], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 3) && (mtd_id_parse(argv[2], NULL, &dev_type, &dev_num, 0) == 0)) {
 		mtdparts_init();
-		if (find_dev_and_part(argv[2], &dev, &pnum, &part) == 0) {
+		if (find_dev_and_part(argv[2], &dev, &pnum, &part, 0) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
 				bank = dev->id->num;
 				info = &flash_info[bank];
