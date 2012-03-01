@@ -340,10 +340,11 @@
 	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
         "ramdisk_nand_offset=0x00680000\0" \
         "ramdisk_nand_size=0x00d40000\0" \
-	"kernel_nand_offset=0x00280000 \0" \
-	"kernel_nand_size=0x00400000 \0" \
-	"kernelimage=uImage \0" \
-	"serverip=192.168.3.5\0" \
+	"kernel_nand_offset=0x00280000\0" \
+	"kernel_nand_size=0x00400000\0" \
+	"tftpdir=\0" \
+	"kernelimage=uImage\0" \
+	"serverip=192.168.3.10\0" \
 	"nfsrootpath=/opt/nfs-exports/ltib-omap\0" \
 	"nfsoptions=,wsize=1500,rsize=1500\0"				\
 	"rotation=0\0" \
@@ -367,93 +368,108 @@
 	"dump_bootargs=echo \"\"; echo \"== Kernel bootargs ==\"; echo $bootargs; echo \"\"; \0" \
 	"dump_boot_sources=echo \"kernel_location: $kernel_location, " \
 			  "rootfs_location: $rootfs_location, " \
-			  "rootfs_type:     $rootfs_type\"; " \
+			  "rootfs_type: $rootfs_type\"; " \
 			  "echo \"\"; " \
 			  "\0" \
-	"load_kernel=if test $kernel_location = 'ram'; then " \
+	"load_kernel=" \
+		"if test $kernel_location = 'ram'; then " \
 		         "echo \"== kernel located at $loadaddr ==\"; " \
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
-		    "else if test $kernel_location = 'nand'; then " \
+		"else " \
+		  "if test $kernel_location = 'nand'; then " \
 			 "echo \"== Loading kernel from nand to $loadaddr ==\"; " \
 			 "nand read.i $loadaddr $kernel_nand_offset $kernel_nand_size; " \
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
-		    "else if test $kernel_location = 'mmc'; then " \
+		  "else " \
+		    "if test $kernel_location = 'mmc'; then " \
 			 "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
 			 "mmc init; " \
 			 "fatload mmc 1 $loadaddr $kernelimage; " \
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
-		    "else if test $kernel_location = 'tftp'; then " \
-			 "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
-			 "tftpboot $loadaddr $kernelimage; " \
+		    "else " \
+		      "if test $kernel_location = 'tftp'; then " \
+			 "echo \"== Loading kernel file $tftpdir$kernelimage to $loadaddr ==\"; " \
+			 "tftpboot $loadaddr $tftpdir$kernelimage; " \
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
-		    "else "\
+		      "else "						\
 			 "echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; " \
 			 "echo \"\"; " \
+	      "fi; " \
+	    "fi; " \
+	  "fi; " \
+	"fi " \
+	"\0" \
+	"load_rootfs=" \
+		"if test $rootfs_location = 'ram'; then " \
+			         "echo \"== rootfs located at $ramdiskaddr ==\"; " \
+				 "echo \"\"; " \
+				 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		"else " \
+		  "if test $rootfs_location = 'tftp'; then " \
+				 "echo \"== Loading rootfs file $tftpdir$ramdiskimage to $ramdiskaddr ==\"; " \
+				 "tftpboot $ramdiskaddr $tftpdir$ramdiskimage;" \
+				 "echo \"\"; " \
+				 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		  "else " \
+		    "if test $rootfs_location = '/dev'; then " \
+				 "echo \"== rootfs located in $rootfs_device ==\"; " \
+				 "echo \"\"; " \
+				 "setenv bootargs ${bootargs} root=${rootfs_device}; " \
+				 "setenv bootm_arg2; " \
+		    "else " \
+		       "if test $rootfs_location = 'nfs'; then " \
+				 "echo \"== rootfs located at $nfs_root_path on server $serverip ==\"; " \
+				 "echo \"\"; " \
+				 "setenv bootargs ${bootargs} root=/dev/nfs; " \
+				 "setenv bootm_arg2; " \
+		      "else " \
+			 "if test $rootfs_location = 'mmc'; then " \
+				 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
+			         "fatload mmc 1 ${ramdiskaddr} ${ramdiskimage}; "\
+				 "setenv bootm_arg2 ${ramdiskaddr}; " \
+		        "else " \
+			  "if test $rootfs_location = 'nand'; then " \
+				 "echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; " \
+				 "nand read.i $ramdiskaddr $ramdisk_nand_offset $ramdisk_nand_size; " \
+				 "setenv bootm_arg2 ${ramdiskaddr}; " \
+			  "else "\
+				 "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, or nand!! == \"; " \
+				 "echo \"\"; " \
+			  "fi; " \
+		        "fi; " \
+		      "fi; " \
 		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi " \
-		    "\0" \
-	"load_rootfs=if test $rootfs_location = 'ram'; then " \
-		         "echo \"== rootfs located at $ramdiskaddr ==\"; " \
-			 "echo \"\"; " \
-			 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		    "else if test $rootfs_location = 'tftp'; then " \
-			 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
-			 "tftpboot $ramdiskaddr $ramdiskimage;" \
-			 "echo \"\"; " \
-			 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		    "else if test $rootfs_location = '/dev'; then " \
-			 "echo \"== rootfs located in $rootfs_device ==\"; " \
-			 "echo \"\"; " \
-			 "setenv bootargs ${bootargs} root=${rootfs_device}; " \
-			 "setenv bootm_arg2; " \
-		    "else if test $rootfs_location = 'nfs'; then " \
-			 "echo \"== rootfs located at $nfs_root_path on server $serverip ==\"; " \
-			 "echo \"\"; " \
-			 "setenv bootargs ${bootargs} root=/dev/nfs; " \
-			 "setenv bootm_arg2; " \
-		    "else if test $rootfs_location = 'mmc'; then " \
-			 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
-		         "fatload mmc 1 ${ramdiskaddr} ${ramdiskimage}; "\
-			 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		    "else if test $rootfs_location = 'nand'; then " \
-			 "echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; " \
-			 "nand read.i $ramdiskaddr $ramdisk_nand_offset $ramdisk_nand_size; " \
-			 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		    "else "\
-			 "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, or nand!! == \"; " \
-			 "echo \"\"; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi " \
-		    "\0" \
-	"set_rootfs_type=if test $rootfs_type = 'ramdisk'; then " \
+		  "fi; " \
+		"fi " \
+		"\0" \
+	"set_rootfs_type=" \
+		"if test $rootfs_type = 'ramdisk'; then " \
 			 "setenv bootargs ${bootargs} root=/dev/ram rw ramdisk_size=${ramdisksize}; " \
-		    "else if test $rootfs_type = 'jffs'; then " \
-			 "setenv bootargs ${bootargs} rw rootfstype=jffs2;" \
-		    "else if test $rootfs_type = 'yaffs'; then " \
-			 "setenv bootargs ${bootargs} rw rootfstype=yaffs2;" \
-		    "else if test $rootfs_type = 'ext3'; then " \
-			 "setenv bootargs ${bootargs} rw rootfstype=ext3 rootwait; " \
-		    "else if test $rootfs_type = 'nfs'; then " \
-			 "setenv bootargs ${bootargs} rw nfsroot=${serverip}:${nfsrootpath}${nfsoptions} ip=dhcp; " \
-		    "else "\
-			 "echo \"$rootfs_type must be set to ramdisk, jffs, yaffs, ext3, or nfs\"; " \
-			 "echo \"\"; " \
+		"else " \
+		  "if test $rootfs_type = 'jffs'; then " \
+				 "setenv bootargs ${bootargs} rw rootfstype=jffs2;" \
+		  "else " \
+		    "if test $rootfs_type = 'yaffs'; then " \
+				 "setenv bootargs ${bootargs} rw rootfstype=yaffs2;" \
+		    "else " \
+		      "if test $rootfs_type = 'ext3'; then " \
+				 "setenv bootargs ${bootargs} rw rootfstype=ext3 rootwait; " \
+			"else " \
+			  "if test $rootfs_type = 'nfs'; then " \
+				 "setenv bootargs ${bootargs} rw nfsroot=${serverip}:${nfsrootpath}${nfsoptions} ip=dhcp; " \
+			  "else "\
+				 "echo \"$rootfs_type must be set to ramdisk, jffs, yaffs, ext3, or nfs\"; " \
+				 "echo \"\"; " \
+			  "fi; " \
+			"fi; " \
+		      "fi; " \
 		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi; " \
-		    "fi " \
-		    "\0" \
+		  "fi " \
+		  "\0" \
 	"addmtdparts=setenv bootargs ${bootargs} ${mtdparts} \0" \
 	"common_bootargs=" \
 	"                 setenv bootargs ${bootargs} display=${display} ${otherbootargs}; " \
@@ -473,6 +489,18 @@
         "     run set_rootfs_type; " \
 	"     run dump_bootargs; " \
 	"     run dump_run_bootm; " \
+	"\0" \
+	"nfsboot=" \
+	"     setenv kernel_location tftp; " \
+	"     setenv rootfs_location nfs; " \
+	"     setenv rootfs_type nfs; " \
+	"     run defaultboot; " \
+	"\0" \
+	"ramboot=" \
+	"     setenv kernel_location tftp; " \
+	"     setenv rootfs_location tftp; " \
+	"     setenv rootfs_type ramdisk; " \
+	"     run defaultboot; " \
 	"\0"
 
 
