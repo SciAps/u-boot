@@ -312,7 +312,7 @@ extern void nand_setup_default_ecc_method(void);
 extern void nand_switch_ecc_default(int *ecc_method);
 extern void nand_switch_ecc_method(int ecc_method);
 extern int setenv_reserved_name(const char *name);
-extern void touchup_env(void);
+extern void touchup_env(int is_initial_env);
 
 /* common/exports.c */
 void	jumptable_init(void);
@@ -748,6 +748,11 @@ int cpu_disable(int nr);
 int cpu_release(int nr, int argc, char * const argv[]);
 #endif
 
+/* Dynmaic mtdpart/id defaults */
+#ifdef CONFIG_MTDPARTS_DYNAMIC_DEFAULT
+extern char *get_mtdids_default(void);
+extern char *get_mtdparts_default(void);
+#endif /* CONFIG_MTDPARTS_DYNAMIC_DEFAULT */
 #endif /* __ASSEMBLY__ */
 
 /* Put only stuff here that the assembler can digest */

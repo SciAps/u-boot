@@ -282,7 +282,7 @@ int omap_nand_chip_has_ecc(void)
 	if (nand_curr_device < 0 ||
 	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
 	    !nand_info[nand_curr_device].name) {
-		printf("Error: Can't switch ecc, no devices available\n");
+		/* If no device, no in-chip ECC! */
 		return 0;
 	}
 
@@ -572,10 +572,8 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 
 	if (nand_curr_device < 0 ||
 	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
-	    !nand_info[nand_curr_device].name) {
-		printf("Error: Can't switch ecc, no devices available\n");
+	    !nand_info[nand_curr_device].name)
 		return;
-	}
 
 	mtd = &nand_info[nand_curr_device];
 	nand = mtd->priv;

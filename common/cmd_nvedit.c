@@ -591,11 +591,6 @@ static int do_env_default(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 		return cmd_usage(cmdtp);
 
 	set_default_env("## Resetting to default environment\n");
-#if defined(CONFIG_TOUCHUP_ENV)
-	/* On a restored environment, need to initialise board
-	 * specific variables */
-	touchup_env();
-#endif
 	return 0;
 }
 

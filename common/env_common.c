@@ -194,6 +194,9 @@ void set_default_env(const char *s)
 		error("Environment import failed: errno = %d\n", errno);
 	}
 	gd->flags |= GD_FLG_ENV_READY;
+#ifdef CONFIG_TOUCHUP_ENV
+	touchup_env(1);
+#endif
 }
 
 int env_check_valid(const char *buf)
@@ -221,6 +224,9 @@ int env_import(const char *buf, int check)
 
 	if (himport_r(&env_htab, (char *)ep->data, ENV_SIZE, '\0', 0)) {
 		gd->flags |= GD_FLG_ENV_READY;
+#ifdef CONFIG_TOUCHUP_ENV
+		touchup_env(0);
+#endif
 		return 1;
 	}
 
@@ -247,10 +253,10 @@ void env_relocate (void)
 #endif
 	} else {
 		env_relocate_spec ();
-	}
 #ifdef CONFIG_TOUCHUP_ENV
-	touchup_env();
+		touchup_env(0);
 #endif
+	}
 }
 
 #ifdef CONFIG_AUTO_COMPLETE

@@ -77,17 +77,22 @@ static void nand_init_chip(struct mtd_info *mtd, struct nand_chip *nand,
 
 }
 
+unsigned int mtd_nand_size;
+unsigned int nand_size(void)
+{
+	return mtd_nand_size;
+}
+
 void nand_init(void)
 {
 	int i;
-	unsigned int size = 0;
 	for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++) {
 		nand_init_chip(&nand_info[i], &nand_chip[i], base_address[i]);
-		size += nand_info[i].size / 1024;
+		mtd_nand_size += nand_info[i].size / 1024;
 		if (nand_curr_device == -1)
 			nand_curr_device = i;
 	}
-	printf("%u MiB\n", size / 1024);
+	printf("%u MiB\n", mtd_nand_size / 1024);
 
 #ifdef CONFIG_SYS_NAND_SELECT_DEVICE
 	/*

@@ -173,10 +173,18 @@
 #define CONFIG_CMD_NAND		/* NAND support			*/
 #define CONFIG_MTD_DEVICE	/* needed for MTD mtdparts support	*/
 #define CONFIG_CMD_MTDPARTS	/* MTD partition support	*/
-#define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
-#define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
+#define MTDIDS_NAND_DEFAULT		"nand0=omap2-nand.0"
+#define MTDIDS_NOR_DEFAULT		"nor0=physmap-flash.0"
+#define MTDPARTS_NAND_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
 					"5m(kernel),20m(ramdisk),-(fs)"
+
+#define MTDPARTS_NOR_DEFAULT		"physmap-flash.0:-(nor)"
+
+/* mtdparts/id default values are dynamic since some modules may
+ * not have NOR flash */
+#define CONFIG_MTDPARTS_DYNAMIC_DEFAULT
+
 #define CONFIG_NAND_SET_DEFAULT	/* Set default NAND access method */
 #define CONFIG_NAND_MULTIPLE_ECC	/* NAND has multiple ECC methods */
 #define CONFIG_TOUCHUP_ENV	/* Set board-specific environment vars */
@@ -324,8 +332,6 @@
 	"otherbootargs=ignore_loglevel early_printk no_console_suspend \0" \
 	"consoledevice=ttyO0\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
-	"mtdids=" MTDIDS_DEFAULT "\0"	\
-	"mtdparts=" MTDPARTS_DEFAULT "\0"	\
 	"disablecharging=no\0" \
 	"mmc_bootscript_addr=0x80FF0000\0" \
 	"disablecharging no\0" \
@@ -564,9 +570,9 @@
  */
 
 /* variable that's non-zero if flash exists */
-#define CONFIG_SYS_FLASH_PRESENCE omap3logic_flash_exists
+#define CONFIG_SYS_FLASH_PRESENCE omap3logic_nor_exists
 #ifndef __ASSEMBLY__
-extern int omap3logic_flash_exists;
+extern int omap3logic_nor_exists;
 #endif
 #define CONFIG_SYS_FLASH_BASE		0x10000000 /* FLASH base address */
 #define CONFIG_SYS_FLASH_SIZE			8 /* 8MB */
@@ -576,6 +582,7 @@ extern int omap3logic_flash_exists;
 #undef	CONFIG_SYS_FLASH_CHECKSUM
 #define CONFIG_SYS_FLASH_CFI		/* use the Common Flash Interface */
 #define CONFIG_FLASH_CFI_DRIVER	/* use the CFI driver */
+#define CONFIG_FLASH_CFI_MTD	/* use the CFI MTD interface */
 
 
 /* **** PISMO SUPPORT *** */
@@ -591,6 +598,7 @@ extern int omap3logic_flash_exists;
 #define SMNAND_ENV_OFFSET		0x220000 /* environment starts here */
 
 #if defined(CONFIG_CMD_NAND)
+#define CONFIG_SYS_NAND_QUIET_TEST	1
 #define CONFIG_NAND_OMAP_GPMC
 #define CONFIG_MTD_NAND_BCH
 #define CONFIG_MTD_NAND_ECC_BCH

@@ -31,6 +31,7 @@
 #include <netdev.h>
 #include <flash.h>
 #include <nand.h>
+#include <malloc.h>
 #include <i2c.h>
 #include <twl4030.h>
 #include <asm/io.h>
@@ -147,10 +148,59 @@ void nand_switch_ecc_method(int method)
 		omap_nand_switch_ecc(new_mode);
 }
 
+/* Non-zero if NOR flash exists on SOM */
+int omap3logic_nor_exists;
+
+/* Dynamic MTD id/parts default value functions */
+static char *omap3logic_mtdparts_default;
+static char *omap3logic_mtdids_default;
+
+char *get_mtdparts_default(void)
+{
+	char str[strlen(MTDPARTS_NAND_DEFAULT) + strlen(MTDPARTS_NOR_DEFAULT) + 10];
+
+	if (!omap3logic_mtdparts_default) {
+		str[0] = '\0';
+		if (nand_size())
+			strcpy(str, MTDPARTS_NAND_DEFAULT);
+		if (omap3logic_nor_exists) {
+			if (strlen(str))
+				strcat(str, ";");
+
+			strcat(str, MTDPARTS_NOR_DEFAULT);
+		}
+		omap3logic_mtdparts_default = malloc(strlen(str) + 1);
+		if (omap3logic_mtdparts_default)
+			strcpy(omap3logic_mtdparts_default, str);
+	}
+	return omap3logic_mtdparts_default;
+}
+
+char *get_mtdids_default(void)
+{
+	char str[strlen(MTDIDS_NAND_DEFAULT) + strlen(MTDIDS_NOR_DEFAULT) + 10];
+
+	if (!omap3logic_mtdids_default) {
+		str[0] = '\0';
+		if (nand_size())
+			strcpy(str, MTDIDS_NAND_DEFAULT);
+		if (omap3logic_nor_exists) {
+			if (strlen(str))
+				strcat(str, ",");
+			strcat(str, MTDIDS_NOR_DEFAULT);
+		}
+		omap3logic_mtdids_default = malloc(strlen(str) + 1);
+		if (omap3logic_mtdids_default)
+			strcpy(omap3logic_mtdids_default, str);
+	}
+	return omap3logic_mtdids_default;
+}
+
 /*
- * Touchup the environment, specificaly to setenv "defaultecc"
+ * Touchup the environment, specificaly "defaultecc", the display,
+ * and mtdids/mtdparts on default environment
  */
-void touchup_env(void)
+void touchup_env(int initial_env)
 {
 	/* Set the defaultecc environment variable to the "natural"
 	 * ECC method supported by the NAND chip */
@@ -163,6 +213,12 @@ void touchup_env(void)
 
 	/* touchup the display environment variable(s) */
 	touchup_display_env();
+
+	if (initial_env) {
+		/* Need to set mdtids/mtdparts to computed defaults */
+		setenv("mtdparts", get_mtdparts_default());
+		setenv("mtdids", get_mtdids_default());
+	}
 }
 
 /*
@@ -243,7 +299,8 @@ int board_late_init(void)
 #endif
 
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
-	nand_unlock(&nand_info[0], 0x0, nand_info[0].size);
+	if (nand_size())
+		nand_unlock(&nand_info[0], 0x0, nand_info[0].size);
 #endif
 
 #ifdef CONFIG_ENABLE_TWL4030_CHARGING
@@ -509,7 +566,6 @@ static void setup_isp176x_settings(void)
  * Description: Setting up the configuration GPMC registers specific to the
  *		NOR flash (and place in sync mode if not done).
  */
-int omap3logic_flash_exists;
 static void fix_flash_sync(void)
 {
 	int arch_number;
@@ -591,7 +647,7 @@ static void fix_flash_sync(void)
 	} else
 		puts ("NOR: Already initialized in sync mode\n");
 
-	omap3logic_flash_exists = 1;
+	omap3logic_nor_exists = 1;
 }
 
 int board_eth_init(bd_t *bis)

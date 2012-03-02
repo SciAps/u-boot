@@ -124,6 +124,7 @@
  * field for read-only partitions */
 #define MTD_WRITEABLE_CMD		1
 
+#ifndef CONFIG_MTDPARTS_DYNAMIC_DEFAULT
 /* default values for mtdids and mtdparts variables */
 #if defined(MTDIDS_DEFAULT)
 static const char *const mtdids_default = MTDIDS_DEFAULT;
@@ -135,6 +136,15 @@ static const char *const mtdids_default = NULL;
 static const char *const mtdparts_default = MTDPARTS_DEFAULT;
 #else
 static const char *const mtdparts_default = NULL;
+#endif
+char *get_mtdparts_default(void)
+{
+	return (char *)mtdparts_default;
+}
+char *get_mtdids_default(void)
+{
+	return (char *)mtdids_default;
+}
 #endif
 
 /* copies of last seen 'mtdids', 'mtdparts' and 'partition' env variables */
@@ -1307,6 +1317,7 @@ static void print_partition_table(void)
 static void list_partitions(void)
 {
 	struct part_info *part;
+	char *mtdids_default, *mtdparts_default;
 
 	debug("\n---list_partitions---\n");
 	print_partition_table();
@@ -1324,6 +1335,7 @@ static void list_partitions(void)
 		}
 	}
 
+	mtdids_default = get_mtdids_default();
 	printf("\ndefaults:\n");
 	printf("mtdids  : %s\n",
 		mtdids_default ? mtdids_default : "none");
@@ -1332,6 +1344,7 @@ static void list_partitions(void)
 	 * if default mtdparts string is greater than console
 	 * printbuffer. Use puts() to prevent system crashes.
 	 */
+	mtdparts_default = get_mtdparts_default();
 	puts("mtdparts: ");
 	puts(mtdparts_default ? mtdparts_default : "none");
 	puts("\n");
@@ -1715,6 +1728,7 @@ int mtdparts_init(void)
 	const char *current_partition;
 	int ids_changed;
 	char tmp_ep[PARTITION_MAXLEN];
+	char *mtdids_default, *mtdparts_default;
 
 	debug("\n---mtdparts_init---\n");
 	if (!initialized) {
@@ -1747,6 +1761,7 @@ int mtdparts_init(void)
 
 	/* if mtdids varible is empty try to use defaults */
 	if (!ids) {
+		mtdids_default = get_mtdids_default();
 		if (mtdids_default) {
 			debug("mtdids variable not defined, using default\n");
 			ids = mtdids_default;
@@ -1933,8 +1948,12 @@ int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  */
 int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+	char *mtdids_default, *mtdparts_default;
+
 	if (argc == 2) {
 		if (strcmp(argv[1], "default") == 0) {
+			mtdids_default = get_mtdids_default();
+			mtdparts_default = get_mtdparts_default();
 			setenv("mtdids", (char *)mtdids_default);
 			setenv("mtdparts", (char *)mtdparts_default);
 			setenv("partition", NULL);
