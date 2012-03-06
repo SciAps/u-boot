@@ -282,6 +282,9 @@ int board_init(void)
 	/* Probe for NOR and if found put into sync mode */
 	fix_flash_sync();
 
+	/* Initialize twl4030 voltages */
+	twl4030_power_init();
+
 	return 0;
 }
 
@@ -333,8 +336,6 @@ void init_vaux1_voltage(void)
 	unsigned char data;
 	unsigned short msg;
 
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-
 	/* Select the output voltage */
 	data = 0x04;
 	i2c_write(I2C_TRITON2, 0x72, 1, &data, 1);
@@ -383,11 +384,6 @@ static void check_sysconfig_regs(void)
  */
 int misc_init_r(void)
 {
-
-#ifdef CONFIG_DRIVER_OMAP34XX_I2C
-	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
-#endif
-
 	/* Turn on vaux1 to make sure voltage is to the product ID chip.
 	 * Extract production data from ID chip, used to selectively
 	 * initialize portions of the system */
