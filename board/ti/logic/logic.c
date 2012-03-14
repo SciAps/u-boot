@@ -440,6 +440,9 @@ static void setup_net_chip(void)
 }
 
 /* GPMC CS0 settings for Logic SOM LV/Torpedo NAND settings */
+#if 0
+/* Following are from current DVT (2012-03-13), but don't work on T+W;
+ * nand-small-stress-test2.sh shows differences between copied files */
 #define LOGIC_NAND_GPMC_CONFIG1	0x00001800
 #define LOGIC_NAND_GPMC_CONFIG2	0x00090900
 #define LOGIC_NAND_GPMC_CONFIG3	0x00090900
@@ -447,6 +450,17 @@ static void setup_net_chip(void)
 #define LOGIC_NAND_GPMC_CONFIG5	0x0007080A
 #define LOGIC_NAND_GPMC_CONFIG6	0x000002CF
 #define LOGIC_NAND_GPMC_CONFIG7	0x00000C70
+#else
+/* Timings that look to work on SOM LV/Torpedo after NAND testing;
+ * not sure if optimal */
+#define LOGIC_NAND_GPMC_CONFIG1	0x00001800
+#define LOGIC_NAND_GPMC_CONFIG2	0x00090900
+#define LOGIC_NAND_GPMC_CONFIG3	0x00090902
+#define LOGIC_NAND_GPMC_CONFIG4	0x07020702
+#define LOGIC_NAND_GPMC_CONFIG5	0x0008080A
+#define LOGIC_NAND_GPMC_CONFIG6	0x000002CF
+#define LOGIC_NAND_GPMC_CONFIG7	0x00000C70
+#endif
 
 static void setup_nand_settings(void)
 {
