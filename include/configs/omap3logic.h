@@ -428,7 +428,7 @@
 				 "setenv bootm_arg2; " \
 		    "else " \
 		       "if test $rootfs_location = 'nfs'; then " \
-				 "echo \"== rootfs located at $nfs_root_path on server $serverip ==\"; " \
+				 "echo \"== rootfs located at $nfsrootpath on server $serverip ==\"; " \
 				 "echo \"\"; " \
 				 "setenv bootargs ${bootargs} root=/dev/nfs; " \
 				 "setenv bootm_arg2; " \
