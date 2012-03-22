@@ -302,10 +302,11 @@
 /* variables as indicated below for a successful boot.                       */
 /*                                                                           */
 /* - $kernel_location                                                        */
-/*   Must always be set.  Values can be ram, nand, mmc, or tftp.             */
+/*   Must always be set.  Values can be ram, nand, nand-part, mmc, or tftp.  */
 /*                                                                           */
 /* - $rootfs_location                                                        */
-/*   Must always be set.  Values can be ram, tftp, /dev, nfs, mmc, or nand.  */
+/*   Must always be set.  Values can be:                                     */
+/*           ram, tftp, /dev, nfs, mmc, nand, nand-part.                     */
 /*                                                                           */
 /* - $rootfs_type                                                            */
 /*   Must always be set.  Values can be ramdisk, jffs, yaffs, ext3, or nfs.  */
@@ -315,6 +316,11 @@
 /*                                                                           */
 /* - If booting from /dev based file system, then $rootfs_device must be     */
 /*   set.                                                                    */
+/* - If booting kernel from nand-part location, $kernel_partition            */
+/*   must be set.                                                            */
+/* - If rootfs is coming from nand-part (i.e. ramdisk in NAND), then         */
+/*   $rootfs_partition must be set.                                          */
+/*   must be set.                                                            */
 /* - If booting from a ramdisk image, then $ramdisksize, and $ramdiskaddr    */
 /*   must be set.                                                            */
 /* - If booting from an nfs location, then $serverip, $nfsrootpath, and      */
@@ -389,26 +395,33 @@
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
 		  "else " \
-		    "if test $kernel_location = 'mmc'; then " \
-			 "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
-			 "mmc init; " \
-			 "fatload mmc 1 $loadaddr $kernelimage; " \
-			 "echo \"\"; " \
-			 "setenv bootm_arg1 ${loadaddr};" \
+		    "if test $kernel_location = 'nand-part'; then " \
+			   "echo \"== Loading kernel from nand partition $kernel_partition to $loadaddr ==\"; " \
+			   "nand read.i $loadaddr $kernel_partition $kernel_nand_size; " \
+			   "echo \"\"; " \
+			   "setenv bootm_arg1 ${loadaddr};" \
 		    "else " \
-		      "if test $kernel_location = 'tftp'; then " \
-			 "echo \"== Loading kernel file $tftpdir$kernelimage to $loadaddr ==\"; " \
-			 "tftpboot $loadaddr $tftpdir$kernelimage; " \
-			 "echo \"\"; " \
-			 "setenv bootm_arg1 ${loadaddr};" \
-		      "else "						\
-			 "echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; " \
-			 "echo \"\"; " \
-	      "fi; " \
-	    "fi; " \
-	  "fi; " \
-	"fi " \
-	"\0" \
+		      "if test $kernel_location = 'mmc'; then " \
+			   "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
+			   "mmc init; " \
+			   "fatload mmc 1 $loadaddr $kernelimage; " \
+			   "echo \"\"; " \
+			   "setenv bootm_arg1 ${loadaddr};" \
+		      "else " \
+		        "if test $kernel_location = 'tftp'; then " \
+			   "echo \"== Loading kernel file $tftpdir$kernelimage to $loadaddr ==\"; " \
+			   "tftpboot $loadaddr $tftpdir$kernelimage; " \
+			   "echo \"\"; " \
+			   "setenv bootm_arg1 ${loadaddr};" \
+		        "else "						\
+			   "echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; " \
+			   "echo \"\"; " \
+		        "fi; " \
+		      "fi; " \
+		    "fi; " \
+		  "fi; " \
+		"fi " \
+		"\0" \
 	"load_rootfs=" \
 		"if test $rootfs_location = 'ram'; then " \
 			         "echo \"== rootfs located at $ramdiskaddr ==\"; " \
@@ -443,8 +456,14 @@
 				 "nand read.i $ramdiskaddr $ramdisk_nand_offset $ramdisk_nand_size; " \
 				 "setenv bootm_arg2 ${ramdiskaddr}; " \
 			  "else "\
-				 "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, or nand!! == \"; " \
-				 "echo \"\"; " \
+			    "if test $rootfs_location = 'nand-part'; then " \
+				   "echo \"== Loading rootfs from nand partition $rootfs_partition to $ramdiskaddr ==\"; " \
+				   "nand read.i $ramdiskaddr $rootfs_partition $ramdisk_nand_size; " \
+				   "setenv bootm_arg2 ${ramdiskaddr}; " \
+			    "else "\
+				   "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, nand-part or nand!! == \"; " \
+				   "echo \"\"; " \
+			    "fi; " \
 			  "fi; " \
 		        "fi; " \
 		      "fi; " \
