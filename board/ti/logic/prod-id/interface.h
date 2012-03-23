@@ -47,6 +47,7 @@ struct id_key {
  * set *oor to non-zero.  If mem_ptr is non-NULL use it as a pointer to
  * a cached copy of the ID data */
 extern unsigned char id_fetch_byte(unsigned char *mem_ptr, int offset, int *oor);
+extern void id_fetch_bytes(unsigned char *mem_ptr, int offset, int size, int *oor);
 
 struct id_data {
 	/* mem_ptr is a pointer to read the initial ID data into, then if not

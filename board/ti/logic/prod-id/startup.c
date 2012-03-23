@@ -123,15 +123,28 @@ int id_startup(struct id_data *data)
 
 	/* Checksum the data (next id_len bytes), must match xsums.data */
 	xsum = 0;
-	for (i = 0; i < hdr.data_length; ++i) {
-		byte = id_fetch_byte(NULL, cookie.offset + i, &err);
-		if (mem_ptr)
-			mem_ptr[cookie.offset + i] = byte;
+	id_error("%s: mem_ptr %p\n", __FUNCTION__, mem_ptr);
+	if (mem_ptr) {
+		id_fetch_bytes(mem_ptr+cookie.offset, cookie.offset, hdr.data_length, &err);
 		if (err != ID_EOK) {
-			id_printf("%s[%u]\n", __FILE__, __LINE__);
-			goto err_ret;
+			id_error("%s:%d err %d", __FUNCTION__, __LINE__, err);
+			goto hard_way;
 		}
-		crc_15_step(&xsum, byte);
+		for (i = 0; i < hdr.data_length; ++i) {
+			crc_15_step(&xsum, mem_ptr[cookie.offset + i]);
+		}
+	} else {
+	hard_way:
+		for (i = 0; i < hdr.data_length; ++i) {
+			byte = id_fetch_byte(NULL, cookie.offset + i, &err);
+			if (mem_ptr)
+				mem_ptr[cookie.offset + i] = byte;
+			if (err != ID_EOK) {
+				id_printf("%s[%u]\n", __FILE__, __LINE__);
+				goto err_ret;
+			}
+			crc_15_step(&xsum, byte);
+		}
 	}
 	if (xsum != xsums.data) {
 		id_printf("%s[%u] xsum: 0x%04x, xsums.data: 0x%04x\n", 

@@ -40,6 +40,20 @@
 
 struct id_data id_data;
 
+void id_fetch_bytes(unsigned char *mem_ptr, int offset, int size, int *oor)
+{
+	id_printf("%s mem_ptr %p offset %d size %d", __FUNCTION__, mem_ptr, offset, size);
+	if (id_data.root_size && ((offset + size) >= (id_data.root_offset + id_data.root_size))) {
+		id_printf("Attempt to read past end of buffer (offset %u >= size %u)\n", offset, sizeof(id_data_buf));
+		*oor = -ID_ERANGE;
+		return;
+	}
+	if (at24_read(offset, mem_ptr, size) != 0) {
+		*oor = -ID_ENODEV;
+	}
+	return;
+}
+
 /* Fetch a byte of data from the ID data on the i2c bus */
 unsigned char id_fetch_byte(unsigned char *mem_ptr, int offset, int *oor)
 {
@@ -273,13 +287,25 @@ int logic_extract_gpmc_timing(int cs, int *config_regs)
 
 int do_dump_id_data(cmd_tbl_t * cmdtp, int flag, int argc, char *const argv[])
 {
+	int i;
 	printf("id_data: mem_ptr %p root_offset %u root_size %u\n",
 		id_data.mem_ptr, id_data.root_offset, id_data.root_size);
+	
+	for (i=0; i<(id_data.root_offset + id_data.root_size); ++i) {
+		if (!(i & 0xf)) {
+			if (i)
+				printf("\n");
+			printf("%04x:", i);
+		}
+		printf(" %02x", id_data.mem_ptr[i]);
+	}
+	printf("\n");
+	
 	return 1;
 }
 
 U_BOOT_CMD(
 	dump_id_data, 1, 1, do_dump_id_data,
 	"dump_id_data - dump product ID data",
-	"dump product ID data in human-readable form"
+	"dump raw new product ID data as hex"
 );
