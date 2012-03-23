@@ -358,10 +358,10 @@ struct logic_panel *logic_find_panel(void)
 		 * set data_lines and strip off trailing specifier */
 		data_lines = 16;
 		if ((p = strrchr(panel_name, '-')) != NULL) {
-			if (!strcmp(p+1, "dvi") || !strcmp(p+1 "16")) {
+			if (!strcmp(p+1, "dvi") || !strcmp(p+1, "16")) {
 				data_lines = 16;
 				*p='\0';
-			} else if (!strcmp(p+1, "hdmi") || !(strcmp(p+1, "24")) {
+			} else if (!strcmp(p+1, "hdmi") || !strcmp(p+1, "24")) {
 				data_lines = 24;
 				*p='\0';
 			}
