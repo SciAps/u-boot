@@ -107,6 +107,7 @@
  * Initialization, must be called once on start up, may be called
  * repeatedly to change the speed and slave addresses.
  */
+int i2c_mux_bus_pins(int bus);
 void i2c_init(int speed, int slaveaddr);
 void i2c_init_board(void);
 #ifdef CONFIG_SYS_I2C_BOARD_LATE_INIT

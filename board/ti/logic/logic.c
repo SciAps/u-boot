@@ -355,6 +355,27 @@ void init_vaux1_voltage(void)
 #endif
 }
 
+/* Mux I2C bus pins appropriately for this board */
+int i2c_mux_bux_pins(int bus)
+{
+	switch(bus) {
+	case 0:
+		/* I2C1_SCA/I2C1_SDL are *always* mixed for I2C */
+		break;
+	case 1:
+		MUX_VAL(CP(I2C2_SCL),		(IEN  | PTU | EN  | M0));
+		MUX_VAL(CP(I2C2_SDA),		(IEN  | PTU | EN  | M0));
+		break;
+	case 2:
+		MUX_VAL(CP(I2C3_SCL),		(IEN  | PTU | EN  | M0));
+		MUX_VAL(CP(I2C3_SDA),		(IEN  | PTU | EN  | M0));
+		break;
+	default:
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * Check _SYSCONFIG registers and fixup bootrom code leaving them in
  * non forced-idle/smart-stdby mode

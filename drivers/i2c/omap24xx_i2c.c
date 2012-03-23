@@ -40,6 +40,13 @@ static struct i2c *i2c_base = (struct i2c *)I2C_DEFAULT_BASE;
 static unsigned int bus_initialized[I2C_BUS_MAX];
 static unsigned int current_bus;
 
+int __i2c_mux_bus_pins(int bus)
+{
+	printf("%s: bus %d\n", __FUNCTION__, bus);
+	return 0;
+}
+void i2c_mux_bus_pins(int bus) __attribute__ ((weak, alias ("__i2c_mux_bus_pins")));
+
 void i2c_init (int speed, int slaveadd)
 {
 	int psc, fsscll, fssclh;
@@ -143,6 +150,7 @@ void i2c_init (int speed, int slaveadd)
 
 	if (gd->flags & GD_FLG_RELOC)
 		bus_initialized[current_bus] = 1;
+	i2c_mux_bus_pins(current_bus);
 }
 
 static int i2c_read_byte (u8 devaddr, u8 regoffset, u8 * value)
