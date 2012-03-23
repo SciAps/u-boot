@@ -354,14 +354,14 @@ struct logic_panel *logic_find_panel(void)
 		strncpy(panel_name, panel, sizeof(panel_name));
 		panel_name[sizeof(panel_name)-1] = '\0';
 
-		/* Search for trailing "-dvi" or "-hdmi", if found
+		/* Search for trailing "-dvi"/"-24" or "-hdmi"/"-24", if found
 		 * set data_lines and strip off trailing specifier */
 		data_lines = 16;
 		if ((p = strrchr(panel_name, '-')) != NULL) {
-			if (!strcmp(p+1, "dvi")) {
+			if (!strcmp(p+1, "dvi") || !strcmp(p+1 "16")) {
 				data_lines = 16;
 				*p='\0';
-			} else if (!strcmp(p+1, "hdmi")) {
+			} else if (!strcmp(p+1, "hdmi") || !(strcmp(p+1, "24")) {
 				data_lines = 24;
 				*p='\0';
 			}
@@ -885,5 +885,32 @@ int do_draw_test(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 U_BOOT_CMD(draw_test, 1, 1, do_draw_test,
 	" - Draw ramps/stipples/boarders on LCD",
+	""
+);
+
+int do_info_video(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	struct omap_video_timings *timing;
+	printf("Current display parameters:\n");
+	printf("name: %s\n", default_panel.name);
+	printf("config: %#x\n", default_panel.config);
+	printf("acb: %#x\n", default_panel.acb);
+	printf("data_lines: %d\n", default_panel.data_lines);
+	timing = &default_panel.timing;
+	printf("x_res: %d\n", timing->x_res);
+	printf("y_res: %d\n", timing->y_res);
+	printf("pixel_clock: %d\n", timing->pixel_clock);
+	printf("hsw: %d\n", timing->hsw);
+	printf("hfp: %d\n", timing->hfp);
+	printf("hbp: %d\n", timing->hbp);
+	printf("vsw: %d\n", timing->vsw);
+	printf("vfp: %d\n", timing->vfp);
+	printf("vbp: %d\n", timing->vbp);
+
+	return 0;
+}
+
+U_BOOT_CMD(dump_video, 1, 1, do_info_video,
+	" - Displays information on video parameters",
 	""
 );
