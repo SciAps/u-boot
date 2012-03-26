@@ -123,7 +123,8 @@ fi
 #
 # Create include file for Make
 #
-echo "ARCH   = ${arch}"  >  config.mk
+echo "CONFIG_NAME = $CONFIG_NAME" > config.mk
+echo "ARCH   = ${arch}"  >>  config.mk
 echo "CPU    = ${cpu}"   >> config.mk
 echo "BOARD  = ${board}" >> config.mk
 

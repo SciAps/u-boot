@@ -292,10 +292,14 @@ ifeq ($(SOC),s5pc2xx)
 LIBS += $(CPUDIR)/s5p-common/libs5p-common.o
 endif
 
+LIBBOARD = board/$(BOARDDIR)/lib$(BOARD).o
+ifeq ($(CONFIG_NAME),omap3logic)
+LIBS += board/$(BOARDDIR)/prod-id/libprod-id.o
+endif
+
 LIBS := $(addprefix $(obj),$(sort $(LIBS)))
 .PHONY : $(LIBS) $(TIMESTAMP_FILE)
 
-LIBBOARD = board/$(BOARDDIR)/lib$(BOARD).o
 LIBBOARD := $(addprefix $(obj),$(LIBBOARD))
 
 # Add GCC lib

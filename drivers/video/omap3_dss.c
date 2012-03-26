@@ -30,6 +30,7 @@
 #include <asm/arch/dss.h>
 #include <asm/arch/sys_proto.h>
 
+#define DEBUG
 #ifdef DEBUG
 #define DSS_DBG_CLK(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
@@ -217,11 +218,12 @@ void dispc_find_clk_divs(int is_tft, unsigned long req_pck, unsigned long fck,
 	}
 
 found:
+
 	cinfo->lck_div = best_ld;
 	cinfo->pck_div = best_pd;
 	cinfo->lck = fck / cinfo->lck_div;
 	cinfo->pck = cinfo->lck / cinfo->pck_div;
-	DSS_DBG_CLK("%s: %d best_ld %u best_pd %u pck %lu\n", __FUNCTION__, __LINE__, best_ld, best_pd, cinfo->pck);
+	DSS_DBG_CLK("%s:%d fck %lu best_ld %u best_pd %u pck %lu\n", __FUNCTION__, __LINE__, fck, best_ld, best_pd, cinfo->pck);
 }
 
 int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
@@ -269,9 +271,11 @@ int omap3_dss_calc_divisor(int is_tft, unsigned int req_pck,
 
 		dispc_find_clk_divs(is_tft, req_pck, fck, &cur_dispc);
 
-		DSS_DBG_CLK("%s:%d cur.pck %u < best_pck %u?\n", __FUNCTION__, __LINE__,
-			abs(cur_dispc.pck - req_pck),
-			abs(best_dispc.pck - req_pck));
+		DSS_DBG_CLK("%s:%d cur.pck(%d-%d) %u < best_pck(%d-%d) %u?\n", __FUNCTION__, __LINE__,
+				cur_dispc.pck, req_pck,
+				abs(cur_dispc.pck - req_pck),
+				best_dispc.pck, req_pck,
+				abs(best_dispc.pck - req_pck));
 
 		if (abs(cur_dispc.pck - req_pck) <
 			abs(best_dispc.pck - req_pck)) {
