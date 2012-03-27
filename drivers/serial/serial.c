@@ -215,6 +215,18 @@ _serial_puts (const char *s,const int port)
 	}
 }
 
+#ifdef CONFIG_SERIAL_OUTPUT_FIFO
+void
+_serial_flush_output(const int port)
+{
+	NS16550_flush_tx_fifo(PORT);
+}
+#else
+void
+_serial_flush_output(void)
+{
+}
+#endif
 
 int
 _serial_getc(const int port)

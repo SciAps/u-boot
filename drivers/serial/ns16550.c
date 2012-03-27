@@ -53,9 +53,22 @@ void NS16550_init (NS16550_t com_port, int baud_divisor)
 #endif /* CONFIG_OMAP */
 }
 
+#ifdef CONFIG_SERIAL_OUTPUT_FIFO
+/* Flush transmit fifo and holding register */
+void NS16550_flush_tx_fifo(NS16550_t com_port)
+{
+	while ((serial_in(&com_port->lsr) & UART_LSR_TEMT) == 0)
+		;
+}
+#endif
+
 #ifndef CONFIG_NS16550_MIN_FUNCTIONS
 void NS16550_reinit (NS16550_t com_port, int baud_divisor)
 {
+#ifdef CONFIG_SERIAL_OUTPUT_FIFO
+	/* flush output fifo before changing baudrate */
+	NS16550_flush_tx_fifo(com_port);
+#endif
 	serial_out(CONFIG_SYS_NS16550_IER, &com_port->ier);
 	serial_out(UART_LCR_BKSE | UART_LCRVAL, &com_port->lcr);
 	serial_out(0, &com_port->dll);
@@ -72,7 +85,13 @@ void NS16550_reinit (NS16550_t com_port, int baud_divisor)
 
 void NS16550_putc (NS16550_t com_port, char c)
 {
+#ifdef CONFIG_SERIAL_OUTPUT_FIFO
+	/* Wait for some room in the fifo */
+	while ((serial_in(&com_port->ssr) & UART_SSR_TX_FIFO_FULL));
+#else
+	/* Wait for Xmit holding register to be empty */
 	while ((serial_in(&com_port->lsr) & UART_LSR_THRE) == 0);
+#endif
 	serial_out(c, &com_port->thr);
 
 	/*

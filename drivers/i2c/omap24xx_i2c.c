@@ -42,7 +42,6 @@ static unsigned int current_bus;
 
 int __i2c_mux_bus_pins(int bus)
 {
-	printf("%s: bus %d\n", __FUNCTION__, bus);
 	return 0;
 }
 void i2c_mux_bus_pins(int bus) __attribute__ ((weak, alias ("__i2c_mux_bus_pins")));

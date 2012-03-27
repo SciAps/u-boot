@@ -42,6 +42,9 @@
 #define CONFIG_OMAP3430		1	/* which is in a 3430 */
 #define CONFIG_OMAP3_LOGIC	1	/* working with Logic OMAP boards */
 
+#define CONFIG_USE_ARCH_MEMSET	1
+#define CONFIG_USE_ARCH_MEMCPY	1
+
 /* Define following to enable new product ID code. */
 #define CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID	1
 
@@ -97,6 +100,7 @@
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
+#define CONFIG_SERIAL_OUTPUT_FIFO	/* Use full serial tx fifo */
 
 /*
  * select serial console configuration
@@ -120,12 +124,14 @@
 /* DDR - I use Micron DDR */
 #define CONFIG_OMAP3_MICRON_DDR		1
 
+#if 0
 /* USB
  * Enable CONFIG_MUSB_HCD for Host functionalities MSC, keyboard
  * Enable CONFIG_MUSB_UDD for Device functionalities.
  */
 #define CONFIG_USB_OMAP3		1
 #define CONFIG_MUSB_HCD			1
+#endif
 /* #define CONFIG_MUSB_UDC		1 */
 
 #ifdef CONFIG_USB_OMAP3

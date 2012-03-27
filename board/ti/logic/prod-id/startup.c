@@ -19,7 +19,7 @@ struct __attribute__ ((packed)) id_checksums {
 	unsigned short data;
 } ;
 
-int id_startup(struct id_data *data)
+static int _id_startup(struct id_data *data, int first_run)
 {
 	int i, err;
 	struct id_cookie cookie;
@@ -28,68 +28,74 @@ int id_startup(struct id_data *data)
 	unsigned short xsum;
 	struct id_header hdr;
 	struct id_checksums xsums;
-	unsigned char *mem_ptr = data->mem_ptr;
+	unsigned char *mem_ptr;
+	unsigned char *cache_ptr;
 
-	/* Clear out data->mem_ptr since we want all the fetches to come
-	 * from the AT24 chip.  Once we've validated the CRCs, restore
-	 * data->mem_ptr to allow id_fetch_byte to read from data->mem_ptr
-	 * instead of the AT24 chip.  Should speed up accesses dramatically */
-	data->mem_ptr = NULL;
+	if (first_run) {
+		cache_ptr = data->mem_ptr;
+		data->mem_ptr = NULL;
+		mem_ptr = NULL;
+	} else {
+		cache_ptr = NULL;
+		mem_ptr = data->mem_ptr;
+	}
+		
+	id_dbg_printf("%s: first_run %d cach_ptr %p mem_ptr %p\n", __FUNCTION__, first_run, cache_ptr, mem_ptr);
 
 	memset(&cookie, 0, sizeof(cookie));
 	/* Data starts with the header, should be 'LpId' */
 	for (i=0; i<4; ++i) {
-		byte = id_fetch_byte(NULL, cookie.offset, &err);
+		byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 		if (mem_ptr)
 			mem_ptr[cookie.offset] = byte;
 		hdr.signature[i] = byte;
 		cookie.offset++;
 		if (err != ID_EOK) {
-			id_printf("%s[%u]\n", __FILE__, __LINE__);
+			id_dbg_printf("%s[%u]\n", __FILE__, __LINE__);
 			goto err_ret;
 		}
 		if (hdr.signature[i] != header_tag[i]) {
-			id_printf("%s[%u]\n", __FILE__, __LINE__);
+			id_dbg_printf("%s[%u]\n", __FILE__, __LINE__);
 			err = ID_ENODEV;
 			goto err_ret;
 		}
 	}
 
 	/* First LE 8-bit value is ID format version */
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.id_fmt_ver = byte;
 	cookie.offset++;
 	
 	/* Second LE 8-bit value is currently not used */
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.unused0 = byte;
 	cookie.offset++;
 	
 	/* Next LE 16-bit value is length of data */
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.data_length = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	hdr.data_length |= byte << 8;
 	cookie.offset++;
 	
 	/* Next LE 16-bit value is xsum of header */
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.header = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.header |= byte << 8;
@@ -102,20 +108,20 @@ int id_startup(struct id_data *data)
 		crc_15_step(&xsum, p[i]);
 
 	if (xsum != xsums.header) {
-		id_printf("%s[%u] xsum: 0x%04x, xsums.header: 0x%04x\n", 
+		id_dbg_printf("%s[%u] xsum: 0x%04x, xsums.header: 0x%04x\n", 
 		        __FILE__, __LINE__, xsum, xsums.header);
 		err = -ID_EL2NSYNC;
 		goto err_ret;
 	}
 
 	/* Next LE 16-bit value is xsum of data */
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.data = byte;
 	cookie.offset++;
 
-	byte = id_fetch_byte(NULL, cookie.offset, &err);
+	byte = id_fetch_byte(cache_ptr, cookie.offset, &err);
 	if (mem_ptr)
 		mem_ptr[cookie.offset] = byte;
 	xsums.data |= byte << 8;
@@ -123,7 +129,7 @@ int id_startup(struct id_data *data)
 
 	/* Checksum the data (next id_len bytes), must match xsums.data */
 	xsum = 0;
-	id_error("%s: mem_ptr %p\n", __FUNCTION__, mem_ptr);
+	id_dbg_printf("%s: mem_ptr %p\n", __FUNCTION__, mem_ptr);
 	if (mem_ptr) {
 		id_fetch_bytes(mem_ptr+cookie.offset, cookie.offset, hdr.data_length, &err);
 		if (err != ID_EOK) {
@@ -136,41 +142,43 @@ int id_startup(struct id_data *data)
 	} else {
 	hard_way:
 		for (i = 0; i < hdr.data_length; ++i) {
-			byte = id_fetch_byte(NULL, cookie.offset + i, &err);
+			byte = id_fetch_byte(cache_ptr, cookie.offset + i, &err);
 			if (mem_ptr)
 				mem_ptr[cookie.offset + i] = byte;
 			if (err != ID_EOK) {
-				id_printf("%s[%u]\n", __FILE__, __LINE__);
+				id_dbg_printf("%s[%u]\n", __FILE__, __LINE__);
 				goto err_ret;
 			}
 			crc_15_step(&xsum, byte);
 		}
 	}
 	if (xsum != xsums.data) {
-		id_printf("%s[%u] xsum: 0x%04x, xsums.data: 0x%04x\n", 
+		id_dbg_printf("%s[%u] xsum: 0x%04x, xsums.data: 0x%04x\n", 
 		        __FILE__, __LINE__, xsum, xsums.data);
 		err = -ID_EL2NSYNC;
 		goto err_ret;
 	}
 
+
 	/* offset is now at the first byte of the root dictionary which
 	   contains its span */
 	data->root_offset = cookie.offset;
+	cookie.mem_ptr = cache_ptr;
 	data->root_size = extract_unsigned_pnum(&cookie, 5, &err);
 	if (err != ID_EOK) {
-		id_printf("%s[%u]\n", __FILE__, __LINE__);
+		id_dbg_printf("%s[%u]\n", __FILE__, __LINE__);
 		goto err_ret;
 	}
-
-	data->root_size += cookie.offset - data->root_offset;
-
-#if 0
-	id_printf("Data format version: %u\n", hdr.id_fmt_ver);	
-#endif	
 
 	/* Restore data->mem_ptr to allow id_fetch_byte to read
 	 * from the cached data instead of the AT24 chip */
 	data->mem_ptr = mem_ptr;
+
+	id_dbg_printf("%s:%d root_size (old %u) now %u + %u\n", __FUNCTION__, __LINE__,
+		data->root_size, cookie.offset, data->root_offset);
+	data->root_size += cookie.offset - data->root_offset;
+
+	id_dbg_printf("Data format version: %u\n", hdr.id_fmt_ver);	
 
 	return ID_EOK;
 
@@ -183,6 +191,39 @@ err_ret:
 	return err;
 }
 
+int id_startup(struct id_data *data, int (*setup_id_chip)(void), int (*shutdown_id_chip)(void))
+{
+	int ret, ret2;
+	void *mem_ptr = data->mem_ptr;
+
+	/* See if product ID already exists in SRAM (i.e. from x-loader) */
+	if (data->mem_ptr) {
+		ret = _id_startup(data, 1);
+		data->mem_ptr = mem_ptr;
+		if (!ret) {
+			id_printf("Found new Product ID data at %p\n", mem_ptr);
+			return ret;
+		}
+	}
+
+	/* No ID data in SRAM, setup the ID chip and read for real */
+	ret = (*setup_id_chip)();
+	if (ret) {
+		id_error("%s: setup_id_chip failed!", __FUNCTION__);
+		return ret;
+	}
+	ret = _id_startup(data, 0);
+	if (!ret)
+		id_printf("Cache new Product ID data from AT24 to %p\n", mem_ptr);
+	ret2 = (*shutdown_id_chip)();
+	if (ret2)
+		id_error("%s: shutdown_id_chip failed!", __FUNCTION__);
+
+	if (!ret && ret2)
+		ret = ret2;
+
+	return ret;
+}
 /*
  * Reset the cookie to cover the whole root dictionary
  */

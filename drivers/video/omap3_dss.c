@@ -30,7 +30,7 @@
 #include <asm/arch/dss.h>
 #include <asm/arch/sys_proto.h>
 
-#define DEBUG
+#undef DEBUG
 #ifdef DEBUG
 #define DSS_DBG_CLK(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else

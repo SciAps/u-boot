@@ -494,6 +494,7 @@ void	_serial_setbrg (const int);
 void	_serial_putc   (const char, const int);
 void	_serial_putc_raw(const char, const int);
 void	_serial_puts   (const char *, const int);
+void	_serial_flush_output(const int);
 int	_serial_getc   (const int);
 int	_serial_tstc   (const int);
 

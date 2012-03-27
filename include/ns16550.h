@@ -111,6 +111,11 @@ typedef volatile struct NS16550 *NS16550_t;
 #define UART_LCR_DLAB	0x80		/* Divisor latch access bit */
 
 /*
+ * These are the definitions for the Supplementary Status Register
+ */
+#define UART_SSR_TX_FIFO_FULL	0x01	/* TX FiFo full */
+
+/*
  * These are the definitions for the Line Status Register
  */
 #define UART_LSR_DR	0x01		/* Data ready */
@@ -163,3 +168,6 @@ void	NS16550_putc   (NS16550_t com_port, char c);
 char	NS16550_getc   (NS16550_t com_port);
 int	NS16550_tstc   (NS16550_t com_port);
 void	NS16550_reinit (NS16550_t com_port, int baud_divisor);
+#ifdef CONFIG_SERIAL_OUTPUT_FIFO
+void	NS16550_flush_tx_fifo(NS16550_t com_port);
+#endif
