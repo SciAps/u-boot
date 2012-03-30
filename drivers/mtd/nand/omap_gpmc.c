@@ -31,8 +31,49 @@
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/nand_bch.h>
 #include <nand.h>
+#include <asm/arch/dma.h>
+
 
 static uint8_t cs;
+
+#ifdef CONFIG_OMAP_DMA
+void omap_dma_read_buf16(struct mtd_info *mtd, uint8_t *buf, int len)
+{
+	int i;
+	struct nand_chip *chip = mtd->priv;
+	u16 *p = (u16 *) buf;
+
+//	printf("%s: len %u\n", __FUNCTION__, len);
+
+
+	/* If request is too small, read it by hand */
+	if (len <= 32) {
+		len >>= 1;
+		for (i = 0; i < len; i+=8) {
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+			*p++ = readw(chip->IO_ADDR_R);
+		}
+		for (; i < len; ++i)
+			*p++ = readw(chip->IO_ADDR_R);
+		return;
+	}
+
+	/* Invalidate the datacache for the buffer, program the DMA and wait
+	 * for it to finish */
+	invalidate_dcache_range((unsigned long)p, (unsigned long)(p + len));
+
+
+	/* Transfer the data(and wait to complete) */
+	omap3_dma_transfer(DMA_CHANNEL_NAND, chip->IO_ADDR_R, buf, len, FB_DMA_START | FB_DMA_WAIT);
+}
+#endif
+
 static struct nand_ecclayout hw_nand_oob = GPMC_NAND_HW_ECC_LAYOUT;
 static struct nand_ecclayout chip_nand_oob = GPMC_NAND_CHIP_ECC_LAYOUT;
 
@@ -662,6 +703,13 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 		nand->ecc.hwctl = omap_enable_chip_hwecc;
 		nand->ecc.correct = omap_correct_chip_hwecc;
 		nand->ecc.read_oob = omap_read_oob_chipecc;
+#ifdef CONFIG_OMAP_DMA
+		omap3_dma_channel_init(DMA_CHANNEL_NAND, -1, CSDP_DATA_TYPE_32BIT, CCR_SRC_AMODE_CONSTANT, CCR_DST_AMODE_POST_INC);
+		if (nand->options & NAND_BUSWIDTH_16)
+			nand->read_buf = omap_dma_read_buf16;
+		else
+			printf("%s: Huh? not 16-bit for DMA\n", __FUNCTION__);
+#endif
 		nand->ecc.mode = NAND_ECC_CHIP; /* internal to chip */
 		nand->ecc.layout = &chip_nand_oob;
 		if (nand->options & NAND_BUSWIDTH_16)

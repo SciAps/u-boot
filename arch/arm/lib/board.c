@@ -50,6 +50,7 @@
 #include <asm/arch/sys_proto.h>
 #include <onenand_uboot.h>
 #include <mmc.h>
+#include <asm/arch/dma.h>
 
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
@@ -464,6 +465,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 	debug ("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
+
+#if defined(CONFIG_OMAP_DMA)
+	omap3_dma_init();
+#endif
 
 #ifdef CONFIG_LOGBUFFER
 	logbuff_init_ptrs ();

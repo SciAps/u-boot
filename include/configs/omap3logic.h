@@ -41,6 +41,7 @@
 #define CONFIG_OMAP34XX		1	/* which is a 34XX */
 #define CONFIG_OMAP3430		1	/* which is in a 3430 */
 #define CONFIG_OMAP3_LOGIC	1	/* working with Logic OMAP boards */
+#define CONFIG_OMAP_DMA		1
 
 #define CONFIG_USE_ARCH_MEMSET	1
 #define CONFIG_USE_ARCH_MEMCPY	1

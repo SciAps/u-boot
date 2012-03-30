@@ -30,6 +30,9 @@
 #include <i2c.h>
 #include <twl4030.h>
 #include <asm/io.h>
+#include <asm/arch/dma.h>
+
+#undef CONFIG_OMAP_DMA /* DMA for MMC doesn't work yet */
 
 #include "omap3_mmc.h"
 
@@ -280,11 +283,19 @@ static unsigned char mmc_read_data(unsigned int *output_buf)
 
 			writel(readl(&mmc_base->stat) | BRR_MASK,
 				&mmc_base->stat);
+#ifdef CONFIG_OMAP_DMA
+			/* Invalidate the datacache for the buffer,
+			 * setup the DMA and wait for it to finish */
+			invalidate_dcache_range((unsigned long)output_buf, MMCSD_SECTOR_SIZE);
+
+			omap3_dma_transfer(DMA_CHANNEL_MMC, &mmc_base->data, output_buf, MMCSD_SECTOR_SIZE, FB_DMA_START | FB_DMA_WAIT);
+#else
 			for (k = 0; k < MMCSD_SECTOR_SIZE / 4; k++) {
 				*output_buf = readl(&mmc_base->data);
 				output_buf++;
 				read_count += 4;
 			}
+#endif
 		}
 
 		if (mmc_stat & BWR_MASK)
@@ -641,6 +652,11 @@ int mmc_legacy_init(int dev)
 	mmc_blk_dev.removable = 0;
 	mmc_blk_dev.block_read = mmc_bread;
 
+#ifdef CONFIG_OMAP_DMA
+	omap3_dma_channel_init(DMA_CHANNEL_MMC, -1, CSDP_DATA_TYPE_32BIT, CCR_SRC_AMODE_CONSTANT, CCR_DST_AMODE_POST_INC);
+#endif
+
 	fat_register_device(&mmc_blk_dev, 1);
+
 	return 0;
 }
