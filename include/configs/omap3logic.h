@@ -353,14 +353,16 @@
 	"kernel_location=mmc \0" \
 	"rootfs_location=mmc \0" \
 	"rootfs_type=ramdisk \0" \
-	"rootfs_device=/dev/mtdblock4 \0" \
+	"rootfs_device=/dev/mtdblock5 \0" \
+        "rootfs_partition=ramdisk\0" \
 	"ramdisksize=64000\0" \
 	"ramdiskaddr=0x82000000\0" \
 	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
-        "ramdisk_nand_offset=0x00680000\0" \
-        "ramdisk_nand_size=0x00d40000\0" \
+        "ramdisk_nand_offset=0x00780000\0" \
+        "ramdisk_nand_size=0x01400000\0" \
+        "kernel_partition=kernel\0" \
 	"kernel_nand_offset=0x00280000\0" \
-	"kernel_nand_size=0x00400000\0" \
+	"kernel_nand_size=0x00500000\0" \
 	"tftpdir=\0" \
 	"kernelimage=uImage\0" \
 	"serverip=192.168.3.10\0" \
@@ -381,6 +383,37 @@
 		"else run defaultboot; fi\0" \
 	"loadbootscript=fatload mmc 1 $mmc_bootscript_addr " CONFIG_MMC_BOOTSCRIPT_NAME "\0" \
 	"bootscript=source ${mmc_bootscript_addr}\0" \
+        "makenandboot=" \
+                "echo \"== Preparing u-boot environment ==\"; "\
+                "nand erase.chip;" \
+                "setenv kernel_location nand-part;" \
+                "setenv rootfs_location nand-part;" \
+                "saveenv;" \
+                "echo \"== Preparing x-loader ==\"; "\
+                "mmc init;" \
+                "mw.b ${loadaddr} 0xff 0x00020000;" \
+                "fatload mmc 1 ${loadaddr} mlo;" \
+                "nandecc hw;" \
+                "nand write ${loadaddr} 0x00000000 0x00020000;" \
+                "nand write ${loadaddr} 0x00020000 0x00020000;" \
+                "nand write ${loadaddr} 0x00040000 0x00020000;" \
+                "nand write ${loadaddr} 0x00060000 0x00020000;" \
+                "echo \"== Preparing u-boot ==\"; "\
+                "mw.b ${loadaddr} 0xff 0x001a0000;" \
+                "fatload mmc 1 ${loadaddr} u-boot.bin;" \
+                "nandecc chip;" \
+                "nand write ${loadaddr} 0x00080000 0x001a0000;" \
+                "echo \"== Preparing $kernelimage ==\"; "\
+                "mw.b ${loadaddr} 0xff ${kernel_nand_size};" \
+                "fatload mmc 1 ${loadaddr} ${kernelimage};" \
+                "nand write ${loadaddr} ${kernel_partition} ${kernel_nand_size};" \
+                "echo \"== Preparing $ramdiskimage ==\"; "\
+                "mw.b ${loadaddr} 0xff ${ramdisk_nand_size};" \
+                "fatload mmc 1 ${loadaddr} ${ramdiskimage};" \
+                "nand write ${loadaddr} ${rootfs_partition} ${ramdisk_nand_size};" \
+                "echo \"== Done. ==\"; "\
+                "echo \"== Please Remove SD Card and Restart ==\"; " \
+                "\0" \
 	"vrfb_arg=if itest ${rotation} -ne 0; then " \
 			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
 		"fi\0" \
