@@ -285,6 +285,11 @@ int board_init(void)
 	/* Initialize twl4030 voltages */
 	twl4030_power_init();
 
+	/* If we're a Torpedo, enable BBCHEN charge the backup battery */
+	if (gd->bd->bi_arch_number == MACH_TYPE_DM3730_TORPEDO
+		|| gd->bd->bi_arch_number == MACH_TYPE_OMAP3_TORPEDO) {
+		twl4030_enable_bb_charging(3200, 25); /* 3.2V @ 25uA */
+	}
 	return 0;
 }
 

@@ -133,6 +133,46 @@ U_BOOT_CMD(poweroff, 1, 1, do_poweroff,
 );
 
 #ifdef CONFIG_TWL4030_CHARGING
+/* Enable the battery backup charger */
+int twl4030_enable_bb_charging(unsigned int millivolts, unsigned int microamps)
+{
+	u8 val;
+
+	if (millivolts >= 3200)
+		val = 0x0c;
+	else if (millivolts >= 3100)
+		val = 0x08;
+	else if (millivolts >= 3000)
+		val = 0x04;
+	else if (millivolts < 2500) {
+		val = 0;
+		goto write_it;
+	}
+	if (microamps >= 1000)
+		val |= 0x03;
+	else if (microamps >= 500)
+		val |= 0x02;
+	else if (microamps >= 150)
+		val |= 0x01;
+	else if (microamps < 25) {
+		val = 0;
+		goto write_it;
+	}
+
+	val |= 0x10; 	/* set BBCHEN */
+
+	printf("Enable battery backup charger (BB_CFG = 0x%02x)\n", val);
+write_it:
+	if (twl4030_i2c_write_u8(TWL4030_CHIP_PM_RECEIVER, val,
+					TWL4030_PM_RECEIVER_BB_CFG)) {
+		printf("Error:TWL4030: failed to write BB_CFG\n");
+		return 1;
+	}
+	return 0;
+}
+
+
+/* Enable AC charging */
 int twl4030_enable_charging(void)
 {
 	u8 val = 0;

@@ -590,6 +590,7 @@ void twl4030_power_init(void);
 void twl4030_power_mmc_init(void);
 /* For charging */
 int twl4030_enable_charging(void);
+int twl4030_enable_bb_charging(unsigned int millivolts, unsigned int microamps);
 
 /*
  * LED
