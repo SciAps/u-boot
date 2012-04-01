@@ -213,6 +213,7 @@
 #define CONFIG_CMD_GPMC_CONFIG	/* gpmc_config */
 #define CONFIG_CMD_MUX_CONFIG	/* mux_config */
 #define CONFIG_CMD_SDRC_CONFIG	/* sdrc_config */
+#define CONFIG_CMD_SETEXPR	/* setexpr command */
 
 #define CONFIG_HARD_I2C			1
 #define CONFIG_SYS_I2C_SPEED		400000
