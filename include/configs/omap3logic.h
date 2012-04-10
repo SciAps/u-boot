@@ -201,11 +201,7 @@
 #define CONFIG_CMD_CACHE	/* Cache control		*/
 #define CONFIG_CMD_TIME		/* time command			*/
 
-#if 0
-/* L2 was disabled since observed that large displays (720p) weren't working
- * Verify can boot kernel using either XGA or 720p HDMI displays settings */
 #define CONFIG_L2_OFF			1 /* Keep L2 Cache Disabled */
-#endif
 
 #define BOARD_LATE_INIT
 
@@ -331,19 +327,44 @@
 /* - If booting kernel from nand-part location, $kernel_partition            */
 /*   must be set.                                                            */
 /* - If rootfs is coming from nand-part (i.e. ramdisk in NAND), then         */
-/*   $rootfs_partition must be set.                                          */
+/*   $ramdisk_partition must be set.                                         */
 /*   must be set.                                                            */
 /* - If booting from a ramdisk image, then $ramdisksize, and $ramdiskaddr    */
 /*   must be set.                                                            */
 /* - If booting from an nfs location, then $serverip, $nfsrootpath, and      */
 /*   $nfsoptions must be set.                                                */
-/* - If booting from nand, $ramdisk_nand_offset, $ramdisk_nand_size,         */
-/*   $kernel_nand_offset, and $kernel_nand_size must be set.                 */
+/* - If booting from nand, $ramdisk_partition,                               */
+/*   $kernel_partition must be set.                                          */
 /* - If booting from a file system, $ramdiskimage, and $kernelimage must be  */
 /*   set.                                                                    */
 /* - Optionally, a boot script named "boot.scr" can be placed in SD to       */
 /*   override any other boot scripts.                                        */
 /*****************************************************************************/
+
+/*****************************************************************************/
+/* When using the makenandboot script, be sure to set:                       */
+/*                                                                           */
+/* - xloadimage         File name of x-loader on the SD card                 */
+/* - ubootimage         File name of u-boot on the SD card                   */
+/* - kernelimage        File name of the kernel image on the SD card         */
+/* - ramdiskimage       File name of the ramdisk image on the SD card        */
+/* - xloader_partition  Name of the x-loader partition in mtdparts           */
+/* - uboot_partition    Name of the u-boot partition in mtdparts             */
+/* - kernel_partition   Name of the kernel partition in mtdparts             */
+/* - ramdisk_partition  Name of the ramdisk partition in mtdparts            */
+/*                                                                           */
+/* When using makeyaffsboot script, be sure to set:                          */
+/*                                                                           */
+/* - xloadimage         File name of x-loader on the SD card                 */
+/* - ubootimage         File name of u-boot on the SD card                   */
+/* - kernelimage        File name of the kernel image on the SD card         */
+/* - yaffsimage         File name of the YAFFS root FS on the SD card        */
+/* - xloader_partition  Name of the x-loader partition in mtdparts           */
+/* - uboot_partition    Name of the u-boot partition in mtdparts             */
+/* - kernel_partition   Name of the kernel partition in mtdparts             */
+/* - yaffs_partition    Name of the YAFFS root FS in mtdparts                */
+/*****************************************************************************/
+
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	OMAP3LOGIC_USBTTY \
 	"bootargs=\0" \
@@ -359,17 +380,19 @@
 	"rootfs_location=mmc \0" \
 	"rootfs_type=ramdisk \0" \
 	"rootfs_device=/dev/mtdblock5 \0" \
-        "rootfs_partition=ramdisk\0" \
+	"xloadimage=mlo\0" \
+	"ubootimage=u-boot.bin.ift\0" \
+	"kernelimage=uImage\0" \
+	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
+	"yaffsimage=rootfs.yaffs2\0" \
+	"xloader_partition=x-loader\0" \
+	"uboot_partition=u-boot\0" \
+        "kernel_partition=kernel\0" \
+        "ramdisk_partition=ramdisk\0" \
+	"yaffs_partition=fs\0" \
 	"ramdisksize=64000\0" \
 	"ramdiskaddr=0x82000000\0" \
-	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
-        "ramdisk_nand_offset=0x00780000\0" \
-        "ramdisk_nand_size=0x01400000\0" \
-        "kernel_partition=kernel\0" \
-	"kernel_nand_offset=0x00280000\0" \
-	"kernel_nand_size=0x00500000\0" \
 	"tftpdir=\0" \
-	"kernelimage=uImage\0" \
 	"serverip=192.168.3.10\0" \
 	"nfsrootpath=/opt/nfs-exports/ltib-omap\0" \
 	"nfsoptions=,wsize=1500,rsize=1500\0"				\
@@ -388,37 +411,6 @@
 		"else run defaultboot; fi\0" \
 	"loadbootscript=fatload mmc 1 $mmc_bootscript_addr " CONFIG_MMC_BOOTSCRIPT_NAME "\0" \
 	"bootscript=source ${mmc_bootscript_addr}\0" \
-        "makenandboot=" \
-                "echo \"== Preparing u-boot environment ==\"; "\
-                "nand erase.chip;" \
-                "setenv kernel_location nand-part;" \
-                "setenv rootfs_location nand-part;" \
-                "saveenv;" \
-                "echo \"== Preparing x-loader ==\"; "\
-                "mmc init;" \
-                "mw.b ${loadaddr} 0xff 0x00020000;" \
-                "fatload mmc 1 ${loadaddr} mlo;" \
-                "nandecc hw;" \
-                "nand write ${loadaddr} 0x00000000 0x00020000;" \
-                "nand write ${loadaddr} 0x00020000 0x00020000;" \
-                "nand write ${loadaddr} 0x00040000 0x00020000;" \
-                "nand write ${loadaddr} 0x00060000 0x00020000;" \
-                "echo \"== Preparing u-boot ==\"; "\
-                "mw.b ${loadaddr} 0xff 0x001a0000;" \
-                "fatload mmc 1 ${loadaddr} u-boot.bin;" \
-                "nandecc chip;" \
-                "nand write ${loadaddr} 0x00080000 0x001a0000;" \
-                "echo \"== Preparing $kernelimage ==\"; "\
-                "mw.b ${loadaddr} 0xff ${kernel_nand_size};" \
-                "fatload mmc 1 ${loadaddr} ${kernelimage};" \
-                "nand write ${loadaddr} ${kernel_partition} ${kernel_nand_size};" \
-                "echo \"== Preparing $ramdiskimage ==\"; "\
-                "mw.b ${loadaddr} 0xff ${ramdisk_nand_size};" \
-                "fatload mmc 1 ${loadaddr} ${ramdiskimage};" \
-                "nand write ${loadaddr} ${rootfs_partition} ${ramdisk_nand_size};" \
-                "echo \"== Done. ==\"; "\
-                "echo \"== Please Remove SD Card and Restart ==\"; " \
-                "\0" \
 	"vrfb_arg=if itest ${rotation} -ne 0; then " \
 			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
 		"fi\0" \
@@ -436,13 +428,13 @@
 		"else " \
 		  "if test $kernel_location = 'nand'; then " \
 			 "echo \"== Loading kernel from nand to $loadaddr ==\"; " \
-			 "nand read.i $loadaddr $kernel_nand_offset $kernel_nand_size; " \
+			 "nand read.i $loadaddr $kernel_partition; " \
 			 "echo \"\"; " \
 			 "setenv bootm_arg1 ${loadaddr};" \
 		  "else " \
 		    "if test $kernel_location = 'nand-part'; then " \
 			   "echo \"== Loading kernel from nand partition $kernel_partition to $loadaddr ==\"; " \
-			   "nand read.i $loadaddr $kernel_partition $kernel_nand_size; " \
+			   "nand read.i $loadaddr $kernel_partition; " \
 			   "echo \"\"; " \
 			   "setenv bootm_arg1 ${loadaddr};" \
 		    "else " \
@@ -498,12 +490,12 @@
 		        "else " \
 			  "if test $rootfs_location = 'nand'; then " \
 				 "echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; " \
-				 "nand read.i $ramdiskaddr $ramdisk_nand_offset $ramdisk_nand_size; " \
+				 "nand read.i $ramdiskaddr $ramdisk_partition; " \
 				 "setenv bootm_arg2 ${ramdiskaddr}; " \
 			  "else "\
 			    "if test $rootfs_location = 'nand-part'; then " \
-				   "echo \"== Loading rootfs from nand partition $rootfs_partition to $ramdiskaddr ==\"; " \
-				   "nand read.i $ramdiskaddr $rootfs_partition $ramdisk_nand_size; " \
+				   "echo \"== Loading rootfs from nand partition $ramdisk_partition to $ramdiskaddr ==\"; " \
+				   "nand read.i $ramdiskaddr $ramdisk_partition; " \
 				   "setenv bootm_arg2 ${ramdiskaddr}; " \
 			    "else "\
 				   "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, nand-part or nand!! == \"; " \
@@ -571,7 +563,124 @@
 	"     setenv rootfs_location tftp; " \
 	"     setenv rootfs_type ramdisk; " \
 	"     run defaultboot; " \
-	"\0"
+	"\0" \
+	"makenandboot=" \
+                "if mmc init; then " \
+		        "xload_addr=${loadaddr}; " \
+			"echo \"== Preparing x-loader ==\"; " \
+			"if fatload mmc 1 ${xload_addr} ${xloadimage}; then " \
+				"xload_size=${filesize};" \
+				"setexpr uboot_addr ${xload_addr} + ${xload_size};" \
+				"echo \"== Preparing u-boot ==\"; " \
+				"if fatload mmc 1 ${uboot_addr} ${ubootimage}; then " \
+					"uboot_size=${filesize};" \
+					"setexpr kernel_addr ${uboot_addr} + ${uboot_size};" \
+					"echo \"== Preparing kernel ==\"; " \
+					"if fatload mmc 1 ${kernel_addr} ${kernelimage}; then " \
+						"kernel_size=${filesize};" \
+						"setexpr ramdisk_addr ${kernel_addr} + ${kernel_size};" \
+						"echo \"== Preparing ramdisk ==\"; " \
+						"if fatload mmc 1 ${ramdisk_addr} ${ramdiskimage}; then " \
+							"ramdisk_size=${filesize};" \
+							"echo \"== Burning x-loader ==\"; " \
+							"nandecc hw;" \
+							"nand erase.part ${xloader_partition};" \
+							"nand write.i ${xload_addr} 0x00000000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00020000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00040000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00060000 ${xload_size};" \
+							"echo \"== Burning u-boot ==\"; " \
+							"nandecc ${defaultecc};" \
+							"nand erase.part ${uboot_partition};" \
+							"nand write.i ${uboot_addr} ${uboot_partition} ${uboot_size};" \
+							"echo \"== Burning $kernelimage ==\"; " \
+							"nand erase.part ${kernel_partition};" \
+							"nand write.i ${kernel_addr} ${kernel_partition} ${kernel_size};" \
+							"echo \"== Burning $ramdiskimage ==\"; " \
+							"nand erase.part ${ramdisk_partition};" \
+							"nand write.i ${ramdisk_addr} ${ramdisk_partition} ${ramdisk_size};" \
+							"echo \"== Burning environment ==\"; " \
+							"setenv kernel_location nand-part;" \
+							"setenv rootfs_location nand-part;" \
+							"setenv rootfs_type ramdisk;" \
+							"saveenv;" \
+							"echo \"== Done. ==\"; "\
+							"echo \"== Please Remove SD Card and Restart ==\"; " \
+						"else " \
+							"echo \"== Failed to find ${ramdiskimage}! ==\"; " \
+						"fi; "\
+					"else " \
+						"echo \"== Failed to find ${kernelimage}! ==\"; " \
+					"fi; " \
+				"else " \
+					"echo \"== Failed to find ${ubootimage}! ==\"; " \
+				"fi; " \
+			"else " \
+				"echo \"== Failed to find ${xloadimage}! ==\"; " \
+			"fi; " \
+		"else " \
+			"echo \"== Failed to init MMC! ==\"; " \
+		"fi; " \
+	"\0" \
+	"makeyaffsboot=" \
+                "if mmc init; then " \
+		        "xload_addr=${loadaddr}; " \
+			"echo \"== Preparing x-loader ==\"; " \
+			"if fatload mmc 1 ${xload_addr} ${xloadimage}; then " \
+				"xload_size=${filesize};" \
+				"setexpr uboot_addr ${xload_addr} + ${xload_size};" \
+				"echo \"== Preparing u-boot ==\"; " \
+				"if fatload mmc 1 ${uboot_addr} ${ubootimage}; then " \
+					"uboot_size=${filesize};" \
+					"setexpr kernel_addr ${uboot_addr} + ${uboot_size};" \
+					"echo \"== Preparing kernel ==\"; " \
+					"if fatload mmc 1 ${kernel_addr} ${kernelimage}; then " \
+						"kernel_size=${filesize};" \
+						"setexpr yaffs_addr ${kernel_addr} + ${kernel_size};" \
+						"echo \"== Preparing YAFFS ==\"; " \
+						"if fatload mmc 1 ${yaffs_addr} ${yaffsimage}; then " \
+							"yaffs_size=${filesize};" \
+							"echo \"== Burning x-loader ==\"; " \
+							"nandecc hw;" \
+							"nand erase.part ${xloader_partition};" \
+							"nand write.i ${xload_addr} 0x00000000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00020000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00040000 ${xload_size};" \
+							"nand write.i ${xload_addr} 0x00060000 ${xload_size};" \
+							"echo \"== Burning u-boot ==\"; " \
+							"nandecc ${defaultecc};" \
+							"nand erase.part ${uboot_partition};" \
+							"nand write.i ${uboot_addr} ${uboot_partition} ${uboot_size};" \
+							"echo \"== Burning $kernelimage ==\"; " \
+							"nand erase.part ${kernel_partition};" \
+							"nand write.i ${kernel_addr} ${kernel_partition} ${kernel_size};" \
+							"echo \"== Burning $yaffsimage ==\"; " \
+							"nand erase.part ${yaffs_partition};" \
+							"nand write.yaffs ${yaffs_addr} ${yaffs_partition} ${yaffs_size};" \
+							"echo \"== Burning environment ==\"; " \
+							"setenv kernel_location nand-part;" \
+							"setenv rootfs_location /dev;" \
+							"setenv rootfs_type yaffs;" \
+							"setenv rootfs_device /dev/mtdblock5;" \
+							"saveenv;" \
+							"echo \"== Done. ==\"; "\
+							"echo \"== Please Remove SD Card and Restart ==\"; " \
+						"else " \
+							"echo \"== Failed to find ${ramdiskimage}! ==\"; " \
+						"fi; "\
+					"else " \
+						"echo \"== Failed to find ${kernelimage}! ==\"; " \
+					"fi; " \
+				"else " \
+					"echo \"== Failed to find ${ubootimage}! ==\"; " \
+				"fi; " \
+			"else " \
+				"echo \"== Failed to find ${xloadimage}! ==\"; " \
+			"fi; " \
+		"else " \
+			"echo \"== Failed to init MMC! ==\"; " \
+		"fi; " \
+	"\0" 
 
 
 #define CONFIG_AUTO_COMPLETE	1
