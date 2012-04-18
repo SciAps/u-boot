@@ -74,7 +74,11 @@ void dieid_num_r(void)
  ******************************************/
 u32 get_cpu_type(void)
 {
-	return readl(&ctrl_base->ctrl_omap_stat);
+	u32 cpu_type;
+	cpu_type = readl(&ctrl_base->ctrl_omap_stat);
+	if (cpu_type == OMAP3730_WRONG_EFUSE)
+		cpu_type = OMAP3730;
+	return cpu_type;
 }
 
 /******************************************

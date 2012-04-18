@@ -250,5 +250,6 @@ struct gpio {
 #define AM3517			0x1c00
 
 #define OMAP3730		0x0c00
+#define OMAP3730_WRONG_EFUSE	0x0e00
 
 #endif
