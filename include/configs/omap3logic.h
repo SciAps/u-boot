@@ -565,124 +565,100 @@
 	"     setenv rootfs_type ramdisk; " \
 	"     run defaultboot; " \
 	"\0" \
-	"makenandboot=" \
-                "if mmc init; then " \
-		        "xload_addr=${loadaddr}; " \
-			"echo \"== Preparing x-loader ==\"; " \
-			"if fatload mmc 1 ${xload_addr} ${xloadimage}; then " \
-				"xload_size=${filesize};" \
-				"setexpr uboot_addr ${xload_addr} + ${xload_size};" \
-				"echo \"== Preparing u-boot ==\"; " \
-				"if fatload mmc 1 ${uboot_addr} ${ubootimage}; then " \
-					"uboot_size=${filesize};" \
-					"setexpr kernel_addr ${uboot_addr} + ${uboot_size};" \
-					"echo \"== Preparing kernel ==\"; " \
-					"if fatload mmc 1 ${kernel_addr} ${kernelimage}; then " \
-						"kernel_size=${filesize};" \
-						"setexpr ramdisk_addr ${kernel_addr} + ${kernel_size};" \
-						"echo \"== Preparing ramdisk ==\"; " \
-						"if fatload mmc 1 ${ramdisk_addr} ${ramdiskimage}; then " \
-							"ramdisk_size=${filesize};" \
-							"echo \"== Burning x-loader ==\"; " \
-							"nandecc hw;" \
-							"nand erase.part ${xloader_partition};" \
-							"nand write.i ${xload_addr} 0x00000000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00020000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00040000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00060000 ${xload_size};" \
-							"echo \"== Burning u-boot ==\"; " \
-							"nandecc ${defaultecc};" \
-							"nand erase.part ${uboot_partition};" \
-							"nand write.i ${uboot_addr} ${uboot_partition} ${uboot_size};" \
-							"echo \"== Burning $kernelimage ==\"; " \
-							"nand erase.part ${kernel_partition};" \
-							"nand write.i ${kernel_addr} ${kernel_partition} ${kernel_size};" \
-							"echo \"== Burning $ramdiskimage ==\"; " \
-							"nand erase.part ${ramdisk_partition};" \
-							"nand write.i ${ramdisk_addr} ${ramdisk_partition} ${ramdisk_size};" \
-							"echo \"== Burning environment ==\"; " \
-							"setenv kernel_location nand-part;" \
-							"setenv rootfs_location nand-part;" \
-							"setenv rootfs_type ramdisk;" \
-							"saveenv;" \
-							"echo \"== Done. ==\"; "\
-							"echo \"== Please Remove SD Card and Restart ==\"; " \
-						"else " \
-							"echo \"== Failed to find ${ramdiskimage}! ==\"; " \
-						"fi; "\
-					"else " \
-						"echo \"== Failed to find ${kernelimage}! ==\"; " \
-					"fi; " \
-				"else " \
-					"echo \"== Failed to find ${ubootimage}! ==\"; " \
-				"fi; " \
-			"else " \
-				"echo \"== Failed to find ${xloadimage}! ==\"; " \
-			"fi; " \
-		"else " \
-			"echo \"== Failed to init MMC! ==\"; " \
-		"fi; " \
+	"checkerror=if test $error = '';\n" \
+	"           then\n" \
+	"               echo \033[31m${error}\033[0m\n" \
+	"               echo_lcd /pAA/k${error}\n" \
+	"           else\n" \
+	"               echo \033[1mDone!\033[m\n" \
+	"               echo_lcd /pAA/kCompleted burning sucessfully./n\n" \
+	"               echo_lcd /kIt is safe to remove the SD card/n\n" \
+	"               echo_lcd /kand restart the devkit./n\n" \
+	"           fi" \
 	"\0" \
-	"makeyaffsboot=" \
-                "if mmc init; then " \
-		        "xload_addr=${loadaddr}; " \
-			"echo \"== Preparing x-loader ==\"; " \
-			"if fatload mmc 1 ${xload_addr} ${xloadimage}; then " \
-				"xload_size=${filesize};" \
-				"setexpr uboot_addr ${xload_addr} + ${xload_size};" \
-				"echo \"== Preparing u-boot ==\"; " \
-				"if fatload mmc 1 ${uboot_addr} ${ubootimage}; then " \
-					"uboot_size=${filesize};" \
-					"setexpr kernel_addr ${uboot_addr} + ${uboot_size};" \
-					"echo \"== Preparing kernel ==\"; " \
-					"if fatload mmc 1 ${kernel_addr} ${kernelimage}; then " \
-						"kernel_size=${filesize};" \
-						"setexpr yaffs_addr ${kernel_addr} + ${kernel_size};" \
-						"echo \"== Preparing YAFFS ==\"; " \
-						"if fatload mmc 1 ${yaffs_addr} ${yaffsimage}; then " \
-							"yaffs_size=${filesize};" \
-							"echo \"== Burning x-loader ==\"; " \
-							"nandecc hw;" \
-							"nand erase.part ${xloader_partition};" \
-							"nand write.i ${xload_addr} 0x00000000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00020000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00040000 ${xload_size};" \
-							"nand write.i ${xload_addr} 0x00060000 ${xload_size};" \
-							"echo \"== Burning u-boot ==\"; " \
-							"nandecc ${defaultecc};" \
-							"nand erase.part ${uboot_partition};" \
-							"nand write.i ${uboot_addr} ${uboot_partition} ${uboot_size};" \
-							"echo \"== Burning $kernelimage ==\"; " \
-							"nand erase.part ${kernel_partition};" \
-							"nand write.i ${kernel_addr} ${kernel_partition} ${kernel_size};" \
-							"echo \"== Burning $yaffsimage ==\"; " \
-							"nand erase.part ${yaffs_partition};" \
-							"nand write.yaffs ${yaffs_addr} ${yaffs_partition} ${yaffs_size};" \
-							"echo \"== Burning environment ==\"; " \
-							"setenv kernel_location nand-part;" \
-							"setenv rootfs_location /dev;" \
-							"setenv rootfs_type yaffs;" \
-							"setenv rootfs_device /dev/mtdblock5;" \
-							"saveenv;" \
-							"echo \"== Done. ==\"; "\
-							"echo \"== Please Remove SD Card and Restart ==\"; " \
-						"else " \
-							"echo \"== Failed to find ${ramdiskimage}! ==\"; " \
-						"fi; "\
-					"else " \
-						"echo \"== Failed to find ${kernelimage}! ==\"; " \
-					"fi; " \
-				"else " \
-					"echo \"== Failed to find ${ubootimage}! ==\"; " \
-				"fi; " \
-			"else " \
-				"echo \"== Failed to find ${xloadimage}! ==\"; " \
-			"fi; " \
-		"else " \
-			"echo \"== Failed to init MMC! ==\"; " \
-		"fi; " \
-	"\0" 
-
+	"initmmc=if test $error = '';then;else\n" \
+	"            if mmc init;then;else;\n" \
+	"                setenv error \"Failed to initialize MMC\"\n" \
+	"            fi\n" \
+	"        fi" \
+	"\0" \
+	"checkmmcfile=if test $error = '';then;else\n" \
+	"                 if fatload mmc 1 ${loadaddr} ${arg1} 1;then;else;\n" \
+	"                     setenv error \"Unable to load ${arg1}\";\n" \
+	"                 fi\n" \
+	"             fi" \
+	"\0" \
+	"burnmmcfile=if test $error = '';then;else\n" \
+	"                echo \"\033[1m== Loading ${arg1} ==\033[0m\"\n" \
+	"                echo_lcd /pAA/kCreating partition ${arg2}\n" \
+	"                lcd_percent \"/pBA/kLoading /P%...\"\n" \
+	"                if fatload mmc 1 ${loadaddr} ${arg1};then;\n" \
+	"                     echo \"\033[1m== Burning ${arg2} ==\033[0m\"\n" \
+	"                     lcd_percent \"/pBA/kErasing /P%...\"\n" \
+	"                     nand erase.part ${arg2}\n" \
+	"                     lcd_percent \"/pBA/kWriting /P%...\"\n" \
+	"                     nand ${arg3} ${loadaddr} ${arg2} ${filesize}\n" \
+	"                     lcd_percent \"\"\n" \
+	"                     echo_lcd /pAA/k/pAB/k\n" \
+	"                else\n" \
+	"                     setenv error \"Unable to load ${arg1}\"\n" \
+	"                fi\n" \
+	"            fi" \
+	"\0" \
+	"burnmmcxloader=if test $error = '';then;else\n" \
+	"                   nandecc hw;\n" \
+	"                   arg1=${xloadimage};arg2=${xloader_partition};arg3=write.i;\n" \
+	"                   run burnmmcfile\n" \
+	"                   if test $error = '';then;else\n" \
+	"                       nand write.i ${loadaddr} 0x00020000 ${filesize}\n" \
+	"                       nand write.i ${loadaddr} 0x00040000 ${filesize}\n" \
+	"                       nand write.i ${loadaddr} 0x00060000 ${filesize}\n" \
+	"                  fi\n" \
+	"              fi" \
+	"\0" \
+	"burncommon=if test $error = '';then;else\n" \
+	"                   arg1=${xloadimage};run checkmmcfile;\n" \
+	"                   arg1=${ubootimage};run checkmmcfile;\n" \
+	"                   arg1=${kernelimage};run checkmmcfile;\n" \
+	"                   run burnmmcxloader;\n" \
+	"                   nandecc ${defaultecc};\n" \
+	"                   arg3=write.i;\n" \
+	"                   arg1=${ubootimage};arg2=${uboot_partition};run burnmmcfile;\n" \
+	"                   arg1=${kernelimage};arg2=${kernel_partition};run burnmmcfile;\n" \
+	"            fi" \
+	"\0" \
+	"makenandboot=if true;then;\n" \
+	"                 setenv error;\n" \
+	"                 run initmmc;\n" \
+	"                 arg1=${ramdiskimage};run checkmmcfile;\n" \
+	"                 run burncommon;\n" \
+	"                 arg1=${ramdiskimage};arg2=${ramdisk_partition};run burnmmcfile;\n" \
+	"                 if test $error = '';then;else\n" \
+	"                     setenv kernel_location nand-part\n" \
+	"                     setenv rootfs_location nand-part\n" \
+	"                     setenv rootfs_type ramdisk\n" \
+	"                     saveenv\n" \
+	"                 fi\n" \
+	"                 run checkerror;\n" \
+	"             fi" \
+	"\0" \
+	"makeyaffsboot=if true;then;\n" \
+	"                 setenv error;\n" \
+	"                 run initmmc;\n" \
+	"                 arg1=${yaffs_partition};run checkmmcfile;\n" \
+	"                 run burncommon;\n" \
+	"                 arg1=${yaffs_partition};arg2=${ramdisk_partition};arg3=write.yaffs;\n" \
+	"                 run burnmmcfile;\n" \
+	"                 if test $error = '';then;else\n" \
+	"                     setenv kernel_location nand-part\n" \
+	"                     setenv rootfs_location /dev\n" \
+	"                     setenv rootfs_type yaffs\n" \
+	"                     setenv rootfs_device /dev/mtdblock5\n" \
+	"                     saveenv\n" \
+	"                 fi\n" \
+	"                 run checkerror;\n" \
+	"             fi" \
+	"\0"
 
 #define CONFIG_AUTO_COMPLETE	1
 /*
