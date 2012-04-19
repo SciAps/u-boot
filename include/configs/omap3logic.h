@@ -184,7 +184,8 @@
 #define MTDIDS_NOR_DEFAULT		"nor0=physmap-flash.0"
 #define MTDPARTS_NAND_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
-					"5m(kernel),20m(ramdisk),-(fs)"
+					"10240k(kernel),128000k(system),"\
+					"128000k(userdata),255488k(cache)"
 
 #define MTDPARTS_NOR_DEFAULT		"physmap-flash.0:-(nor)"
 
@@ -372,7 +373,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	OMAP3LOGIC_USBTTY \
 	"bootargs=\0" \
-	"otherbootargs=ignore_loglevel early_printk no_console_suspend \0" \
+	"otherbootargs=omap_vout.vid1_static_vrfb_alloc=y vram=32M omapfb.vram=0:16M \0" \
 	"consoledevice=ttyO0\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
 	"disablecharging=no\0" \
@@ -386,7 +387,7 @@
 	"rootfs_device=/dev/mtdblock5 \0" \
 	"xloadimage=mlo\0" \
 	"ubootimage=u-boot.bin.ift\0" \
-	"kernelimage=uImage\0" \
+	"kernelimage=boot.img\0" \
 	"ramdiskimage=rootfs.ext2.gz.uboot\0" \
 	"yaffsimage=rootfs.yaffs2\0" \
 	"xloader_partition=x-loader\0" \
@@ -658,7 +659,31 @@
 	"                 fi\n" \
 	"                 run checkerror;\n" \
 	"             fi" \
+	"\0" \
+	"makeandroidboot=if true;then;\n" \
+	"                 setenv error;\n" \
+	"                 run initmmc;\n" \
+	"                 arg1=system.img;run checkmmcfile;\n" \
+	"                 arg1=userdata.img;run checkmmcfile;\n" \
+	"                 kernelimage=boot.img;\n" \
+	"                 run burncommon;\n" \
+	"                 arg3=write.yaffs;\n" \
+	"                 arg1=system.img;arg2=system;\n" \
+	"                 run burnmmcfile;\n" \
+	"                 arg1=userdata.img;arg2=userdata;\n" \
+	"                 run burnmmcfile;\n" \
+	"                 if test $error = '';then;else\n" \
+	"                     nand erase.part cache\n" \
+	"                     setenv kernel_location nand-part\n" \
+	"                     setenv rootfs_location /dev\n" \
+	"                     setenv rootfs_type yaffs\n" \
+	"                     setenv rootfs_device /dev/mtdblock5\n" \
+	"                     saveenv\n" \
+	"                 fi\n" \
+	"                 run checkerror;\n" \
+	"             fi" \
 	"\0"
+
 
 #define CONFIG_AUTO_COMPLETE	1
 /*
