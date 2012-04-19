@@ -664,14 +664,13 @@
 	"makeandroidboot=if true;then;\n" \
 	"                 setenv error;\n" \
 	"                 run initmmc;\n" \
-	"                 arg1=system.img;run checkmmcfile;\n" \
-	"                 arg1=userdata.img;run checkmmcfile;\n" \
-	"                 kernelimage=boot.img;\n" \
+	"                 arg_filename=system.img;run checkmmcfile;\n" \
+	"                 arg_filename=userdata.img;run checkmmcfile;\n" \
 	"                 run burncommon;\n" \
-	"                 arg3=write.yaffs;\n" \
-	"                 arg1=system.img;arg2=system;\n" \
+	"                 arg_writecmd=write.yaffs;\n" \
+	"                 arg_filename=system.img;arg_partition=system;\n" \
 	"                 run burnmmcfile;\n" \
-	"                 arg1=userdata.img;arg2=userdata;\n" \
+	"                 arg_filename=userdata.img;arg_partition=userdata;\n" \
 	"                 run burnmmcfile;\n" \
 	"                 if test $error = '';then;else\n" \
 	"                     nand erase.part cache\n" \
