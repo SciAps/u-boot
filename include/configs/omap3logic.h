@@ -391,8 +391,8 @@
 	"yaffsimage=rootfs.yaffs2\0" \
 	"xloader_partition=x-loader\0" \
 	"uboot_partition=u-boot\0" \
-        "kernel_partition=kernel\0" \
-        "ramdisk_partition=ramdisk\0" \
+	"kernel_partition=kernel\0" \
+	"ramdisk_partition=ramdisk\0" \
 	"yaffs_partition=fs\0" \
 	"ramdisksize=64000\0" \
 	"ramdiskaddr=0x82000000\0" \
@@ -401,147 +401,144 @@
 	"nfsrootpath=/opt/nfs-exports/ltib-omap\0" \
 	"nfsoptions=,wsize=1500,rsize=1500\0"				\
 	"rotation=0\0" \
-        "autoboot=echo \"\n== Checking mmc1 for alternate boot script " CONFIG_MMC_BOOTSCRIPT_NAME " ==\"; " \
-	        "if mmc init; then " \
-			"if run loadbootscript; then " \
-			        "echo \"\"; " \
-			        "echo \"== Found script on mmc 1, starting ==\"; " \
-				"run bootscript; " \
-			"else " \
-			        "echo \"\"; " \
-			        "echo \"== Script not found on mmc 1, proceeding with defaultboot ==\"; " \
-				"run defaultboot;" \
-			"fi; " \
-		"else run defaultboot; fi\0" \
+	"autoboot=echo \"\n== Checking mmc1 for alternate boot script " CONFIG_MMC_BOOTSCRIPT_NAME " ==\";" \
+	"         if mmc init; then \n" \
+	"             if run loadbootscript; then \n" \
+	"                 echo \"\"; \n" \
+	"                 echo \"== Found script on mmc 1, starting ==\"; \n" \
+	"                 run bootscript; \n" \
+	"             else \n" \
+	"                 echo \"\"; \n" \
+	"                 echo \"== Script not found on mmc 1, proceeding with defaultboot ==\"; \n" \
+	"                 run defaultboot;\n" \
+	"             fi; \n" \
+	"         else run defaultboot; fi\0" \
 	"loadbootscript=fatload mmc 1 $mmc_bootscript_addr " CONFIG_MMC_BOOTSCRIPT_NAME "\0" \
 	"bootscript=source ${mmc_bootscript_addr}\0" \
-	"vrfb_arg=if itest ${rotation} -ne 0; then " \
-			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; " \
+	"vrfb_arg=if itest ${rotation} -ne 0; then \n" \
+			"setenv bootargs ${bootargs} omapfb.vrfb=y omapfb.rotate=${rotation}; \n" \
 		"fi\0" \
 	"dump_bootargs=echo \"\"; echo \"== Kernel bootargs ==\"; echo $bootargs; echo \"\"; \0" \
 	"dump_boot_sources=echo \"kernel_location: $kernel_location, " \
 			  "rootfs_location: $rootfs_location, " \
 			  "rootfs_type: $rootfs_type\"; " \
 			  "echo \"\"; " \
-			  "\0" \
-	"load_kernel=" \
-		"if test $kernel_location = 'ram'; then " \
-		         "echo \"== kernel located at $loadaddr ==\"; " \
-			 "echo \"\"; " \
-			 "setenv bootm_arg1 ${loadaddr};" \
-		"else " \
-		  "if test $kernel_location = 'nand'; then " \
-			 "echo \"== Loading kernel from nand to $loadaddr ==\"; " \
-			 "nand read.i $loadaddr $kernel_partition; " \
-			 "echo \"\"; " \
-			 "setenv bootm_arg1 ${loadaddr};" \
-		  "else " \
-		    "if test $kernel_location = 'nand-part'; then " \
-			   "echo \"== Loading kernel from nand partition $kernel_partition to $loadaddr ==\"; " \
-			   "nand read.i $loadaddr $kernel_partition; " \
-			   "echo \"\"; " \
-			   "setenv bootm_arg1 ${loadaddr};" \
-		    "else " \
-		      "if test $kernel_location = 'mmc'; then " \
-			   "echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; " \
-			   "mmc init; " \
-			   "fatload mmc 1 $loadaddr $kernelimage; " \
-			   "echo \"\"; " \
-			   "setenv bootm_arg1 ${loadaddr};" \
-		      "else " \
-		        "if test $kernel_location = 'tftp'; then " \
-			   "echo \"== Loading kernel file $tftpdir$kernelimage to $loadaddr ==\"; " \
-			   "tftpboot $loadaddr $tftpdir$kernelimage; " \
-			   "echo \"\"; " \
-			   "setenv bootm_arg1 ${loadaddr};" \
-		        "else "						\
-			   "echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; " \
-			   "echo \"\"; " \
-		        "fi; " \
-		      "fi; " \
-		    "fi; " \
-		  "fi; " \
-		"fi " \
-		"\0" \
-	"load_rootfs=" \
-		"if test $rootfs_location = 'ram'; then " \
-			         "echo \"== rootfs located at $ramdiskaddr ==\"; " \
-				 "echo \"\"; " \
-				 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		"else " \
-		  "if test $rootfs_location = 'tftp'; then " \
-				 "echo \"== Loading rootfs file $tftpdir$ramdiskimage to $ramdiskaddr ==\"; " \
-				 "tftpboot $ramdiskaddr $tftpdir$ramdiskimage;" \
-				 "echo \"\"; " \
-				 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		  "else " \
-		    "if test $rootfs_location = '/dev'; then " \
-				 "echo \"== rootfs located in $rootfs_device ==\"; " \
-				 "echo \"\"; " \
-				 "setenv bootargs ${bootargs} root=${rootfs_device}; " \
-				 "setenv bootm_arg2; " \
-		    "else " \
-		       "if test $rootfs_location = 'nfs'; then " \
-				 "echo \"== rootfs located at $nfsrootpath on server $serverip ==\"; " \
-				 "echo \"\"; " \
-				 "setenv bootargs ${bootargs} root=/dev/nfs; " \
-				 "setenv bootm_arg2; " \
-		      "else " \
-			 "if test $rootfs_location = 'mmc'; then " \
-				 "echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; " \
-			         "fatload mmc 1 ${ramdiskaddr} ${ramdiskimage}; "\
-				 "setenv bootm_arg2 ${ramdiskaddr}; " \
-		        "else " \
-			  "if test $rootfs_location = 'nand'; then " \
-				 "echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; " \
-				 "nand read.i $ramdiskaddr $ramdisk_partition; " \
-				 "setenv bootm_arg2 ${ramdiskaddr}; " \
-			  "else "\
-			    "if test $rootfs_location = 'nand-part'; then " \
-				   "echo \"== Loading rootfs from nand partition $ramdisk_partition to $ramdiskaddr ==\"; " \
-				   "nand read.i $ramdiskaddr $ramdisk_partition; " \
-				   "setenv bootm_arg2 ${ramdiskaddr}; " \
-			    "else "\
-				   "echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, nand-part or nand!! == \"; " \
-				   "echo \"\"; " \
-			    "fi; " \
-			  "fi; " \
-		        "fi; " \
-		      "fi; " \
-		    "fi; " \
-		  "fi; " \
-		"fi " \
-		"\0" \
-	"set_rootfs_type=" \
-		"if test $rootfs_type = 'ramdisk'; then " \
-			 "setenv bootargs ${bootargs} root=/dev/ram rw ramdisk_size=${ramdisksize}; " \
-		"else " \
-		  "if test $rootfs_type = 'jffs'; then " \
-				 "setenv bootargs ${bootargs} rw rootfstype=jffs2;" \
-		  "else " \
-		    "if test $rootfs_type = 'yaffs'; then " \
-				 "setenv bootargs ${bootargs} rw rootfstype=yaffs2;" \
-		    "else " \
-		      "if test $rootfs_type = 'ext3'; then " \
-				 "setenv bootargs ${bootargs} rw rootfstype=ext3 rootwait; " \
-			"else " \
-			  "if test $rootfs_type = 'nfs'; then " \
-				 "setenv bootargs ${bootargs} rw nfsroot=${serverip}:${nfsrootpath}${nfsoptions} ip=dhcp; " \
-			  "else "\
-				 "echo \"$rootfs_type must be set to ramdisk, jffs, yaffs, ext3, or nfs\"; " \
-				 "echo \"\"; " \
-			  "fi; " \
-			"fi; " \
-		      "fi; " \
-		    "fi; " \
-		  "fi " \
-		  "\0" \
+	"\0" \
+	"load_kernel=if test $kernel_location = 'ram'; then \n" \
+	"              echo \"== kernel located at $loadaddr ==\"; \n" \
+	"              echo \"\"; \n" \
+	"              setenv bootm_arg1 ${loadaddr};\n" \
+	"            else \n" \
+	"              if test $kernel_location = 'nand'; then \n" \
+	"                echo \"== Loading kernel from nand to $loadaddr ==\"; \n" \
+	"                nand read.i $loadaddr $kernel_partition; \n" \
+	"                echo \"\"; \n" \
+	"                setenv bootm_arg1 ${loadaddr};\n" \
+	"              else \n" \
+	"                if test $kernel_location = 'nand-part'; then \n" \
+	"                  echo \"== Loading kernel from nand partition $kernel_partition to $loadaddr ==\"; \n" \
+	"                  nboot $loadaddr $kernel_partition; \n" \
+	"                  echo \"\"; \n" \
+	"                  setenv bootm_arg1 ${loadaddr};\n" \
+	"                else \n" \
+	"                  if test $kernel_location = 'mmc'; then \n" \
+	"                    echo \"== Loading kernel file $kernelimage to $loadaddr ==\"; \n" \
+	"                    mmc init; \n" \
+	"                    fatload mmc 1 $loadaddr $kernelimage; \n" \
+	"                    echo \"\"; \n" \
+	"                    setenv bootm_arg1 ${loadaddr};\n" \
+	"                  else \n" \
+	"                    if test $kernel_location = 'tftp'; then \n" \
+	"                      echo \"== Loading kernel file $tftpdir$kernelimage to $loadaddr ==\"; \n" \
+	"                      tftpboot $loadaddr $tftpdir$kernelimage; \n" \
+	"                      echo \"\"; \n" \
+	"                      setenv bootm_arg1 ${loadaddr};\n" \
+	"                    else \n"						\
+	"                      echo \"== kernel_location must be set to ram, nand, mmc, or tftp!! ==\"; \n" \
+	"                      echo \"\"; \n" \
+	"                    fi; \n" \
+	"                  fi; \n" \
+	"                fi; \n" \
+	"              fi; \n" \
+	"            fi\n " \
+	"\0" \
+	"load_rootfs=if test $rootfs_location = 'ram'; then \n" \
+	"              echo \"== rootfs located at $ramdiskaddr ==\"; \n" \
+	"              echo \"\"; \n" \
+	"              setenv bootm_arg2 ${ramdiskaddr}; \n" \
+	"            else \n" \
+	"              if test $rootfs_location = 'tftp'; then \n" \
+	"                echo \"== Loading rootfs file $tftpdir$ramdiskimage to $ramdiskaddr ==\"; \n" \
+	"                tftpboot $ramdiskaddr $tftpdir$ramdiskimage;\n" \
+	"                echo \"\"; \n" \
+	"                setenv bootm_arg2 ${ramdiskaddr}; \n" \
+	"              else \n" \
+	"                if test $rootfs_location = '/dev'; then \n" \
+	"                  echo \"== rootfs located in $rootfs_device ==\"; \n" \
+	"                  echo \"\"; \n" \
+	"                  setenv bootargs ${bootargs} root=${rootfs_device}; \n" \
+	"                  setenv bootm_arg2; \n" \
+	"                else \n" \
+	"                  if test $rootfs_location = 'nfs'; then \n" \
+	"                    echo \"== rootfs located at $nfsrootpath on server $serverip ==\"; \n" \
+	"                    echo \"\"; \n" \
+	"                    setenv bootargs ${bootargs} root=/dev/nfs; \n" \
+	"                    setenv bootm_arg2; \n" \
+	"                  else \n" \
+	"                    if test $rootfs_location = 'mmc'; then\n " \
+	"                      echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; \n" \
+	"                      fatload mmc 1 ${ramdiskaddr} ${ramdiskimage}; \n"\
+	"                      setenv bootm_arg2 ${ramdiskaddr}; \n" \
+	"                    else \n" \
+	"                      if test $rootfs_location = 'nand'; then \n" \
+	"                        echo \"== Loading rootfs from nand to $ramdiskaddr ==\"; \n" \
+	"                        nand read.i $ramdiskaddr $ramdisk_partition; \n" \
+	"                        setenv bootm_arg2 ${ramdiskaddr}; \n" \
+	"                      else \n"\
+	"                        if test $rootfs_location = 'nand-part'; then \n" \
+	"                          echo \"== Loading rootfs from nand partition $ramdisk_partition to $ramdiskaddr ==\"; \n" \
+	"                          nand read.i $ramdiskaddr $ramdisk_partition; \n" \
+	"                          setenv bootm_arg2 ${ramdiskaddr}; \n" \
+	"                        else \n"\
+	"                          echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, nand-part or nand!! == \"; \n" \
+	"                          echo \"\"; \n" \
+	"                        fi; \n" \
+	"                      fi; \n" \
+	"                    fi; \n" \
+	"                  fi; \n" \
+	"                fi; \n" \
+	"              fi; \n" \
+	"            fi" \
+	"\0" \
+	"set_rootfs_type=if test $rootfs_type = 'ramdisk'; then \n" \
+	"                  setenv bootargs ${bootargs} root=/dev/ram rw ramdisk_size=${ramdisksize}; \n" \
+	"                else \n" \
+	"                  if test $rootfs_type = 'jffs'; then \n" \
+	"                    setenv bootargs ${bootargs} rw rootfstype=jffs2;\n" \
+	"                  else \n" \
+	"                    if test $rootfs_type = 'yaffs'; then \n" \
+	"                      setenv bootargs ${bootargs} rw rootfstype=yaffs2;\n" \
+	"                    else \n" \
+	"                      if test $rootfs_type = 'ext3'; then \n" \
+	"                        setenv bootargs ${bootargs} rw rootfstype=ext3 rootwait; \n" \
+	"                      else \n" \
+	"                        if test $rootfs_type = 'nfs'; then \n" \
+	"                          setenv bootargs ${bootargs} rw nfsroot=${serverip}:${nfsrootpath}${nfsoptions} ip=dhcp; \n" \
+	"                        else \n"\
+	"                          echo \"$rootfs_type must be set to ramdisk, jffs, yaffs, ext3, or nfs\"; \n" \
+	"                          echo \"\"; \n" \
+	"                        fi; \n" \
+	"                      fi; \n" \
+	"                    fi; \n" \
+	"                  fi; \n" \
+	"                fi" \
+	"\0" \
 	"addmtdparts=setenv bootargs ${bootargs} ${mtdparts} \0" \
 	"common_bootargs=" \
 	"                 setenv bootargs ${bootargs} display=${display} ${otherbootargs}; " \
 	"                 run addmtdparts; " \
 	"                 run vrfb_arg; " \
-        "                 \0" \
+	"\0" \
 	"dump_run_bootm=" \
 	"     echo \"bootm $bootm_arg1 $bootm_arg2\"; " \
 	"     echo \"\"; " \
@@ -552,7 +549,7 @@
 	"     run common_bootargs; " \
 	"     run load_kernel; " \
 	"     run load_rootfs; " \
-        "     run set_rootfs_type; " \
+	"     run set_rootfs_type; " \
 	"     run dump_bootargs; " \
 	"     run dump_run_bootm; " \
 	"\0" \
