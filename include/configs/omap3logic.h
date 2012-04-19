@@ -502,6 +502,7 @@
 	"                          setenv bootm_arg2 ${ramdiskaddr}; \n" \
 	"                        else \n"\
 	"                          echo \"== rootfs_location must be set to ram, tftp, /dev, nfs, mmc, nand-part or nand!! == \"; \n" \
+	"                          setenv bootm_arg2; \n" \
 	"                          echo \"\"; \n" \
 	"                        fi; \n" \
 	"                      fi; \n" \
