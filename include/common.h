@@ -663,6 +663,21 @@ void	panic(const char *fmt, ...)
 int	sprintf(char * buf, const char *fmt, ...)
 		__attribute__ ((format (__printf__, 2, 3)));
 int	vsprintf(char *buf, const char *fmt, va_list args);
+int	vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+
+struct vsprintf_out {
+	/* Function to call to output char to string/function */
+	void (*out)(struct vsprintf_out *p, char ch);
+	struct {
+		char *buf;
+		int len;  /* Length of characters output */
+		int limit; /* limit of string to output characters in */
+		int file; /* file number for output (in fprintf) */
+		void (*outchar) (char ch); /* Function to putc() */
+	} dat;
+};
+
+int	vsfprintf(struct vsprintf_out *p, const char *fmt, va_list args);
 
 /* lib/strmhz.c */
 char *	strmhz(char *buf, unsigned long hz);
