@@ -702,7 +702,7 @@ int vsfprintf(
 		number(p, num, base, field_width, precision, flags);
 	}
 	p->out(p, '\0');
-	return p->dat.len;
+	return p->dat.len - 1;
 }
 
 
