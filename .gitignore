@@ -34,6 +34,9 @@
 /u-boot.dis
 /u-boot.lds
 
+/u-boot-no-environ_bin
+/u-boot.bin.ift
+
 #
 # Generated files
 #

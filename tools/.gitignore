@@ -14,3 +14,4 @@
 /env/fw_printenv
 /gdb/gdbcont
 /gdb/gdbsend
+/sign-nand-image
