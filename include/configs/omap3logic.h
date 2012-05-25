@@ -672,9 +672,9 @@
 	"                 run burncommon;\n" \
 	"                 arg_writecmd=write.yaffs;\n" \
 	"                 arg_filename=system.img;arg_partition=system;\n" \
-	"                 run burnmmcfile;\n" \
+	"                 run burnfile;\n" \
 	"                 arg_filename=userdata.img;arg_partition=userdata;\n" \
-	"                 run burnmmcfile;\n" \
+	"                 run burnfile;\n" \
 	"                 if test $error = '';then;else\n" \
 	"                     nand erase.part cache\n" \
 	"                     setenv kernel_location nand-part\n" \
