@@ -281,6 +281,7 @@ static noinline char* put_dec(char *buf, unsigned NUM_TYPE num)
 	}
 }
 
+
 #define ZEROPAD	1		/* pad with zero */
 #define SIGN	2		/* unsigned/signed long */
 #define PLUS	4		/* show plus */
@@ -289,7 +290,7 @@ static noinline char* put_dec(char *buf, unsigned NUM_TYPE num)
 #define SMALL	32		/* Must be 32 == 0x20 */
 #define SPECIAL	64		/* 0x */
 
-static char *number(char *buf, unsigned NUM_TYPE num, int base, int size, int precision, int type)
+static void number(struct vsprintf_out *p, unsigned NUM_TYPE num, int base, int size, int precision, int type)
 {
 	/* we are called with base 8, 10 or 16, only, thus don't need "G..."  */
 	static const char digits[16] = "0123456789ABCDEF"; /* "GHIJKLMNOPQRSTUVWXYZ"; */
@@ -352,36 +353,44 @@ static char *number(char *buf, unsigned NUM_TYPE num, int base, int size, int pr
 	/* leading space padding */
 	size -= precision;
 	if (!(type & (ZEROPAD+LEFT)))
-		while(--size >= 0)
-			*buf++ = ' ';
+		while(--size >= 0) {
+			p->out(p, ' ');
+		}
 	/* sign */
-	if (sign)
-		*buf++ = sign;
+	if (sign) {
+		p->out(p, sign);
+	}
 	/* "0x" / "0" prefix */
 	if (need_pfx) {
-		*buf++ = '0';
-		if (base == 16)
-			*buf++ = ('X' | locase);
+		p->out(p, '0');
+		if (base == 16) {
+			p->out(p, 'X' | locase);
+		}
 	}
 	/* zero or space padding */
 	if (!(type & LEFT)) {
 		char c = (type & ZEROPAD) ? '0' : ' ';
-		while (--size >= 0)
-			*buf++ = c;
+		while (--size >= 0) {
+			p->out(p, c);
+		}
 	}
 	/* hmm even more zero padding? */
-	while (i <= --precision)
-		*buf++ = '0';
+	while (i <= --precision) {
+		p->out(p, '0');
+	}
 	/* actual digits of result */
-	while (--i >= 0)
-		*buf++ = tmp[i];
+	while (--i >= 0) {
+		p->out(p, tmp[i]);
+	}
 	/* trailing space padding */
-	while (--size >= 0)
-		*buf++ = ' ';
-	return buf;
+	while (--size >= 0) {
+		p->out(p, ' ');
+	}
 }
 
-static char *string(char *buf, char *s, int field_width, int precision, int flags)
+static void string(
+	struct vsprintf_out *p,
+	char *s, int field_width, int precision, int flags)
 {
 	int len, i;
 
@@ -391,17 +400,19 @@ static char *string(char *buf, char *s, int field_width, int precision, int flag
 	len = strnlen(s, precision);
 
 	if (!(flags & LEFT))
-		while (len < field_width--)
-			*buf++ = ' ';
-	for (i = 0; i < len; ++i)
-		*buf++ = *s++;
-	while (len < field_width--)
-		*buf++ = ' ';
-	return buf;
+		while (len < field_width--) {
+			p->out(p, ' ');
+		}
+	for (i = 0; i < len; ++i) {
+		p->out(p, *s++);
+	}
+	while (len < field_width--) {
+		p->out(p, ' ');
+	}
 }
 
 #ifdef CONFIG_CMD_NET
-static char *mac_address_string(char *buf, u8 *addr, int field_width,
+static void mac_address_string(struct vsprintf_out *outp, u8 *addr, int field_width,
 				int precision, int flags)
 {
 	char mac_addr[6 * 3]; /* (6 * 2 hex digits), 5 colons and trailing zero */
@@ -415,10 +426,10 @@ static char *mac_address_string(char *buf, u8 *addr, int field_width,
 	}
 	*p = '\0';
 
-	return string(buf, mac_addr, field_width, precision, flags & ~SPECIAL);
+	string(outp, mac_addr, field_width, precision, flags & ~SPECIAL);
 }
 
-static char *ip6_addr_string(char *buf, u8 *addr, int field_width,
+static void ip6_addr_string(struct vsprintf_out *outp, u8 *addr, int field_width,
 			 int precision, int flags)
 {
 	char ip6_addr[8 * 5]; /* (8 * 4 hex digits), 7 colons and trailing zero */
@@ -433,10 +444,10 @@ static char *ip6_addr_string(char *buf, u8 *addr, int field_width,
 	}
 	*p = '\0';
 
-	return string(buf, ip6_addr, field_width, precision, flags & ~SPECIAL);
+	string(outp, ip6_addr, field_width, precision, flags & ~SPECIAL);
 }
 
-static char *ip4_addr_string(char *buf, u8 *addr, int field_width,
+static void ip4_addr_string(struct vsprintf_out *outp, u8 *addr, int field_width,
 			 int precision, int flags)
 {
 	char ip4_addr[4 * 4]; /* (4 * 3 decimal digits), 3 dots and trailing zero */
@@ -454,7 +465,7 @@ static char *ip4_addr_string(char *buf, u8 *addr, int field_width,
 	}
 	*p = '\0';
 
-	return string(buf, ip4_addr, field_width, precision, flags & ~SPECIAL);
+	string(outp, ip4_addr, field_width, precision, flags & ~SPECIAL);
 }
 #endif
 
@@ -476,10 +487,10 @@ static char *ip4_addr_string(char *buf, u8 *addr, int field_width,
  * function pointers are really function descriptors, which contain a
  * pointer to the real address.
  */
-static char *pointer(const char *fmt, char *buf, void *ptr, int field_width, int precision, int flags)
+static void pointer(struct vsprintf_out *p, const char *fmt, void *ptr, int field_width, int precision, int flags)
 {
 	if (!ptr)
-		return string(buf, "(null)", field_width, precision, flags);
+		return string(p, "(null)", field_width, precision, flags);
 
 #ifdef CONFIG_CMD_NET
 	switch (*fmt) {
@@ -487,15 +498,15 @@ static char *pointer(const char *fmt, char *buf, void *ptr, int field_width, int
 		flags |= SPECIAL;
 		/* Fallthrough */
 	case 'M':
-		return mac_address_string(buf, ptr, field_width, precision, flags);
+		return mac_address_string(p, ptr, field_width, precision, flags);
 	case 'i':
 		flags |= SPECIAL;
 		/* Fallthrough */
 	case 'I':
 		if (fmt[1] == '6')
-			return ip6_addr_string(buf, ptr, field_width, precision, flags);
+			return ip6_addr_string(p, ptr, field_width, precision, flags);
 		if (fmt[1] == '4')
-			return ip4_addr_string(buf, ptr, field_width, precision, flags);
+			return ip4_addr_string(p, ptr, field_width, precision, flags);
 		flags &= ~SPECIAL;
 		break;
 	}
@@ -505,7 +516,7 @@ static char *pointer(const char *fmt, char *buf, void *ptr, int field_width, int
 		field_width = 2*sizeof(void *);
 		flags |= ZEROPAD;
 	}
-	return number(buf, (unsigned long) ptr, 16, field_width, precision, flags);
+	number(p, (unsigned long) ptr, 16, field_width, precision, flags);
 }
 
 /**
@@ -525,11 +536,12 @@ static char *pointer(const char *fmt, char *buf, void *ptr, int field_width, int
  * Call this function if you are already dealing with a va_list.
  * You probably want sprintf() instead.
  */
-int vsprintf(char *buf, const char *fmt, va_list args)
+int vsfprintf(
+	struct vsprintf_out *p,
+	const char *fmt, va_list args)
 {
 	unsigned NUM_TYPE num;
 	int base;
-	char *str;
 
 	int flags;		/* flags to number() */
 
@@ -541,11 +553,10 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 				/* 'z' changed to 'Z' --davidm 1/25/99 */
 				/* 't' added for ptrdiff_t */
 
-	str = buf;
 
 	for (; *fmt ; ++fmt) {
 		if (*fmt != '%') {
-			*str++ = *fmt;
+			p->out(p, *fmt);
 			continue;
 		}
 
@@ -608,19 +619,20 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 		switch (*fmt) {
 		case 'c':
 			if (!(flags & LEFT))
-				while (--field_width > 0)
-					*str++ = ' ';
-			*str++ = (unsigned char) va_arg(args, int);
+				while (--field_width > 0) {
+					p->out(p, ' ');
+				}
+			p->out(p, (unsigned char) va_arg(args, int));
 			while (--field_width > 0)
-				*str++ = ' ';
+				p->out(p, ' ');
 			continue;
 
 		case 's':
-			str = string(str, va_arg(args, char *), field_width, precision, flags);
+			string(p, va_arg(args, char *), field_width, precision, flags);
 			continue;
 
 		case 'p':
-			str = pointer(fmt+1, str,
+			pointer(p, fmt+1,
 					va_arg(args, void *),
 					field_width, precision, flags);
 			/* Skip all alphanumeric pointer suffixes */
@@ -631,15 +643,15 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 		case 'n':
 			if (qualifier == 'l') {
 				long * ip = va_arg(args, long *);
-				*ip = (str - buf);
+				*ip = p->dat.len;
 			} else {
 				int * ip = va_arg(args, int *);
-				*ip = (str - buf);
+				*ip = p->dat.len;
 			}
 			continue;
 
 		case '%':
-			*str++ = '%';
+			p->out(p, '%');
 			continue;
 
 		/* integer number formats - set up the flags and "break" */
@@ -660,11 +672,12 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 			break;
 
 		default:
-			*str++ = '%';
-			if (*fmt)
-				*str++ = *fmt;
-			else
+			p->out(p, '%');
+			if (*fmt) {
+				p->out(p, *fmt);
+			} else {
 				--fmt;
+			}
 			continue;
 		}
 		if (qualifier == 'L')  /* "quad" for 64 bit variables */
@@ -686,10 +699,48 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 			if (flags & SIGN)
 				num = (signed int) num;
 		}
-		str = number(str, num, base, field_width, precision, flags);
+		number(p, num, base, field_width, precision, flags);
 	}
-	*str = '\0';
-	return str-buf;
+	p->out(p, '\0');
+	return p->dat.len - 1;
+}
+
+
+/* vsprintf helper function to output characters into a string */
+static void vsprintf_buf(struct vsprintf_out *p, char ch)
+{
+	p->dat.buf[p->dat.len++] = ch;
+}
+
+int vsprintf(char *buf, const char *fmt, va_list args)
+{
+	struct vsprintf_out r;
+
+	memset(&r, 0, sizeof(r));
+	r.out = vsprintf_buf;
+	r.dat.buf = buf;
+
+	return vsfprintf(&r, fmt, args);
+}
+
+/* vsnprintf helper function to output characters into a string
+ * unless the character overflows the buffer */
+static void vsnprintf_buf(struct vsprintf_out *p, char ch)
+{
+	if (p->dat.len < p->dat.limit)
+		p->dat.buf[p->dat.len++] = ch;
+}
+
+int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
+{
+	struct vsprintf_out r;
+
+	memset(&r, 0, sizeof(r));
+	r.out = vsnprintf_buf;
+	r.dat.buf = buf;
+	r.dat.limit = size;
+
+	return vsfprintf(&r, fmt, args);
 }
 
 /**
@@ -707,9 +758,14 @@ int sprintf(char * buf, const char *fmt, ...)
 {
 	va_list args;
 	int i;
+	struct vsprintf_out r;
+
+	memset(&r, 0, sizeof(r));
+	r.out = vsprintf_buf;
+	r.dat.buf = buf;
 
 	va_start(args, fmt);
-	i=vsprintf(buf,fmt,args);
+	i=vsfprintf(&r, fmt,args);
 	va_end(args);
 	return i;
 }

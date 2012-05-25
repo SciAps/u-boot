@@ -270,22 +270,29 @@ void fputs(int file, const char *s)
 		console_puts(file, s);
 }
 
+void fprintf_out(struct vsprintf_out *p, char ch)
+{
+	fputc(p->dat.file, ch);
+}
+
 int fprintf(int file, const char *fmt, ...)
 {
 	va_list args;
 	uint i;
-	char printbuffer[CONFIG_SYS_PBSIZE];
+	struct vsprintf_out r;
+
+	memset(&r, 0, sizeof(r));
+	r.out = fprintf_out;
+	r.dat.file = file;
 
 	va_start(args, fmt);
 
 	/* For this to work, printbuffer must be larger than
 	 * anything we ever want to print.
 	 */
-	i = vsprintf(printbuffer, fmt, args);
+	i = vsfprintf(&r, fmt, args);
 	va_end(args);
 
-	/* Send to desired file */
-	fputs(file, printbuffer);
 	return i;
 }
 
@@ -365,37 +372,39 @@ void puts(const char *s)
 	}
 }
 
+static void vprintf_out(struct vsprintf_out *p, char ch)
+{
+	p->dat.len++;
+	putc(ch);
+}
+
+
 int printf(const char *fmt, ...)
 {
 	va_list args;
 	uint i;
-	char printbuffer[CONFIG_SYS_PBSIZE];
+	struct vsprintf_out r;
+
+	memset(&r, 0, sizeof(r));
+	r.out = vprintf_out;
 
 	va_start(args, fmt);
-
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	i = vsprintf(printbuffer, fmt, args);
+	i = vsfprintf(&r, fmt, args);
 	va_end(args);
 
-	/* Print the string */
-	puts(printbuffer);
 	return i;
 }
 
 int vprintf(const char *fmt, va_list args)
 {
 	uint i;
-	char printbuffer[CONFIG_SYS_PBSIZE];
+	struct vsprintf_out r;
 
-	/* For this to work, printbuffer must be larger than
-	 * anything we ever want to print.
-	 */
-	i = vsprintf(printbuffer, fmt, args);
+	memset(&r, 0, sizeof(r));
+	r.out = vprintf_out;
 
-	/* Print the string */
-	puts(printbuffer);
+	i = vsfprintf(&r, fmt, args);
+
 	return i;
 }
 
@@ -459,7 +468,7 @@ inline void dbg(const char *fmt, ...)
 	/* For this to work, printbuffer must be larger than
 	 * anything we ever want to print.
 	 */
-	i = vsprintf(printbuffer, fmt, args);
+	i = vsnprintf(printbuffer, sizeof(printbuffer), fmt, args);
 	va_end(args);
 
 	if ((screen + sizeof(screen) - 1 - cursor)

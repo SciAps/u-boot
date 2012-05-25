@@ -375,6 +375,7 @@
 	"bootargs=\0" \
 	"otherbootargs=omap_vout.vid1_static_vrfb_alloc=y vram=32M omapfb.vram=0:16M \0" \
 	"consoledevice=ttyO0\0" \
+	"autoload=no\0" \
 	"setconsole=setenv console ${consoledevice},${baudrate}n8\0" \
 	"disablecharging=no\0" \
 	"mmc_bootscript_addr=0x80FF0000\0" \
@@ -395,6 +396,7 @@
 	"kernel_partition=kernel\0" \
 	"ramdisk_partition=ramdisk\0" \
 	"yaffs_partition=fs\0" \
+	"arg_loadcmd=fatload mmc 1\0" \
 	"ramdisksize=64000\0" \
 	"ramdiskaddr=0x82000000\0" \
 	"tftpdir=\0" \
@@ -590,11 +592,11 @@
 	"                 fi\n" \
 	"             fi" \
 	"\0" \
-	"burnmmcfile=if test $error = '';then;else\n" \
+	"burnfile=if test $error = '';then;else\n" \
 	"                echo \"\033[1m== Loading ${arg_filename} ==\033[0m\"\n" \
 	"                echo_lcd /pAA/kPartition ${arg_partition}:\n" \
-	"                echo_lcd /pBA/kLoading ${arg_filename} From SD/aC;lcd_percent \"/gC/k /P%...\"\n" \
-	"                if fatload mmc 1 ${loadaddr} ${arg_filename};then;\n" \
+	"                echo_lcd /pBA/kLoading ${arg_filename}/aC;lcd_percent \"/gC/k /P%...\"\n" \
+	"                if ${arg_loadcmd} ${loadaddr} ${arg_filename};then;\n" \
 	"                     echo \"\033[1m== Burning ${arg_partition} ==\033[0m\"\n" \
 	"                     lcd_percent \"/pBA/kErasing Partition /P%...\"\n" \
 	"                     nand erase.part ${arg_partition}\n" \
@@ -610,7 +612,7 @@
 	"burnmmcxloader=if test $error = '';then;else\n" \
 	"                   nandecc hw;\n" \
 	"                   arg_filename=${xloadimage};arg_partition=${xloader_partition};arg_writecmd=write.i;\n" \
-	"                   run burnmmcfile\n" \
+	"                   run burnfile\n" \
 	"                   if test $error = '';then;else\n" \
 	"                       nand write.i ${loadaddr} 0x00020000 ${filesize}\n" \
 	"                       nand write.i ${loadaddr} 0x00040000 ${filesize}\n" \
@@ -625,8 +627,8 @@
 	"                   run burnmmcxloader;\n" \
 	"                   nandecc ${defaultecc};\n" \
 	"                   arg_writecmd=write.i;\n" \
-	"                   arg_filename=${ubootimage};arg_partition=${uboot_partition};run burnmmcfile;\n" \
-	"                   arg_filename=${kernelimage};arg_partition=${kernel_partition};run burnmmcfile;\n" \
+	"                   arg_filename=${ubootimage};arg_partition=${uboot_partition};run burnfile;\n" \
+	"                   arg_filename=${kernelimage};arg_partition=${kernel_partition};run burnfile;\n" \
 	"            fi" \
 	"\0" \
 	"makenandboot=if true;then;\n" \
@@ -635,7 +637,7 @@
 	"                 arg_filename=${ramdiskimage};run checkmmcfile;\n" \
 	"                 run burncommon;\n" \
 	"                 arg_filename=${ramdiskimage};arg_partition=${ramdisk_partition};arg_writecmd=write.i;\n" \
-	"                 run burnmmcfile;\n" \
+	"                 run burnfile;\n" \
 	"                 if test $error = '';then;else\n" \
 	"                     setenv kernel_location nand-part\n" \
 	"                     setenv rootfs_location nand-part\n" \
@@ -651,7 +653,7 @@
 	"                 arg_filename=${yaffsimage};run checkmmcfile;\n" \
 	"                 run burncommon;\n" \
 	"                 arg_filename=${yaffsimage};arg_partition=${yaffs_partition};arg_writecmd=write.yaffs;\n" \
-	"                 run burnmmcfile;\n" \
+	"                 run burnfile;\n" \
 	"                 if test $error = '';then;else\n" \
 	"                     setenv kernel_location nand-part\n" \
 	"                     setenv rootfs_location /dev\n" \

@@ -510,7 +510,8 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		return -EINVAL;
 	}
 
-	if (!need_skip && !withoob) {
+	/* Write one page at a time since need to update percentage */
+	if (0 && !need_skip && !withoob) {
 		rval = nand_write (nand, offset, length, buffer);
 		if (rval == 0)
 			return 0;
