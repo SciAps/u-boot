@@ -417,6 +417,8 @@ struct prcm {
 #endif /* __KERNEL_STRICT_NAMES */
 
 #define PRM_BASE		0x48306000
+#define PRM_CLKSEL		0x48306d40
+#define PRM_CLKSRC_CTRL		0x48307270
 
 #ifndef __KERNEL_STRICT_NAMES
 #ifndef __ASSEMBLY__

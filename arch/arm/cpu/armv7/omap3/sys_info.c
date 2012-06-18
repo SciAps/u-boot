@@ -264,12 +264,88 @@ u32 get_device_type(void)
 }
 
 #ifdef CONFIG_DISPLAY_CPUINFO
+
+static int extract_sys_clk(u32 clksel)
+{
+	clksel &= 0x7;
+	switch(clksel) {
+	case 0:
+		return 12000000;
+	case 1:
+		return 13000000;
+	case 2:
+		return 19200000;
+	case 3:
+		return 26000000;
+	case 4:
+		return 38400000;
+	case 5:
+		return 16800000;
+	default:
+		return 0;
+	}
+}
+
+/* Find the speed the SDRC (in Hz) is current setup for */
+unsigned int extract_l3_ick(void)
+{
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
+	u32 osc_clk;
+	u32 sysclkdiv;
+	u32 fsys_clk;
+	u32 fclkout;
+	u32 l3_ick;
+	u32 fcore_clk;
+	u32 m, n, m2, div_l3;
+	u32 reg;
+
+	/* Get pk_clksel and use to find crystal speed */
+	reg = __raw_readl(PRM_CLKSEL);
+	osc_clk = extract_sys_clk(reg);
+	osc_clk /= 1000; /* Scale down by KHz to keep in scale */
+
+	/* Find sys clock divisor */
+	sysclkdiv = __raw_readl(PRM_CLKSRC_CTRL);
+	sysclkdiv >>= 6;
+	sysclkdiv &= 0x3;
+
+	fsys_clk = osc_clk / sysclkdiv;
+
+	reg = __raw_readl((u32)&prcm_base->clksel1_pll);
+	m = reg >> 16;
+	m &= 0x7ff;
+	n = reg >> 8;
+	n &= 0x7f;
+
+	fclkout = (fsys_clk * m) / (n + 1);
+
+	div_l3 = __raw_readl((u32)&prcm_base->clksel_core);
+	div_l3 &= 0x3;
+
+	l3_ick = fclkout / div_l3;
+
+	m2 = __raw_readl((u32)&prcm_base->clksel1_pll);
+	m2 >>= 27;
+	m2 &= 0x3f;
+
+	fcore_clk = fclkout / m2;
+
+#if 0
+	printf("DPLL3:\n");
+	printf("\tfclkout = (%u * %u) / (%u + 1) = %u\n", fsys_clk * 1000, m, n, fclkout * 1000);
+	printf("\tL3_ick: %u\n", l3_ick * 1000);
+	printf("\tfcore_clk: %u\n", fcore_clk * 1000);
+#endif
+	return l3_ick * 1000;
+}
+
 /**
  * Print CPU information
  */
 int print_cpuinfo (void)
 {
 	char *cpu_family_s, *cpu_s, *sec_s, *max_clk;
+	u32 l3_ick;
 
 	switch (get_cpu_family()) {
 	case CPU_OMAP34XX:
@@ -348,9 +424,11 @@ int print_cpuinfo (void)
 		sec_s = "?";
 	}
 
-	printf("%s%s-%s ES%s, CPU-OPP2, L3-165MHz, Max CPU Clock %s\n",
+	l3_ick = extract_l3_ick() / 1000000;
+
+	printf("%s%s-%s ES%s, CPU-OPP2, L3-%uMHz, Max CPU Clock %s\n",
 			cpu_family_s, cpu_s, sec_s,
-			rev_s[get_cpu_rev()], max_clk);
+		rev_s[get_cpu_rev()], l3_ick, max_clk);
 
 	return 0;
 }
