@@ -373,7 +373,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	OMAP3LOGIC_USBTTY \
 	"bootargs=\0" \
-	"androidbootargs=setenv bootargs ${bootargs} omap_vout.vid1_static_vrfb_alloc=y vram=32M omapfb.vram=0:16Mandroidboot.console=${consoledevice} \0" \
+	"androidbootargs=setenv bootargs ${bootargs} omap_vout.vid1_static_vrfb_alloc=y vram=32M omapfb.vram=0:16M androidboot.console=${consoledevice} \0" \
 	"otherbootargs= \0" \
 	"consoledevice=ttyO0\0" \
 	"autoload=no\0" \
