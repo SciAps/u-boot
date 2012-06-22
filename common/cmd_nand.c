@@ -50,7 +50,7 @@ static int switch_ecc_bypart(const char *id)
 		if(mtd->id->type != MTD_DEV_TYPE_NAND)
 		{
 			printf("Automatic ECC selection only works against NAND partitions.\n");
-			return 1;
+			return -1;
 		}
 
 		if(mtd->id->num < 0 ||
@@ -58,7 +58,7 @@ static int switch_ecc_bypart(const char *id)
 		   !nand_info[nand_curr_device].name)
 		{
 			printf("\nNo NAND device found\n");
-			return 1;
+			return -1;
 		}
 
 		// Use the default flags if needed for decisions below
@@ -76,8 +76,14 @@ static int switch_ecc_bypart(const char *id)
 				omap_nand_switch_ecc(OMAP_ECC_HW);
 		} else if(flags & (1 << MTDFLAGS_ECC_CHIP))
 		{
+			if(!nand->has_chip_ecc)
+			{
+				printf("NAND Chip doesn't support in-chip ECC\n");
+				return -1;
+			}
 			if(nand->ecc.mode != NAND_ECC_CHIP)
 				omap_nand_switch_ecc(OMAP_ECC_CHIP);
+			printf("Here\n");
 		} else if(flags & (1 << MTDFLAGS_ECC_BCH))
 		{
 			if(nand->ecc.mode != NAND_ECC_SOFT_BCH)
@@ -633,6 +639,8 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		if(s && !strcmp(s, ".auto"))
 		{
 			int flags = switch_ecc_bypart(argv[3]);
+			if(flags == -1)
+				return 1;
 			rw_mode = 1;
 			if((flags & (1 << MTDFLAGS_YAFFS)) && !read)
 				rw_mode = 2;
