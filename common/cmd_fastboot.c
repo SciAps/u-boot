@@ -293,7 +293,7 @@ static void str2wide (char *str, u16 * wide)
 static int fbt_init_strings(void)
 {
 	struct usb_string_descriptor *string;
-
+	const char *model = getenv("logic_model");
 	fbt_string_table[STR_LANG] =
 		(struct usb_string_descriptor*)wstr_lang;
 
@@ -306,7 +306,14 @@ static int fbt_init_strings(void)
 	string = (struct usb_string_descriptor *) wstr_product;
 	string->bLength = sizeof(wstr_product);
 	string->bDescriptorType = USB_DT_STRING;
-	strncpy (product_name, getenv("logic_model"), sizeof(product_name));
+
+	if(model)
+	{
+		strncpy (product_name, model, sizeof(product_name));
+	} else {
+		// Otherwise, populate generically.
+		strncpy (product_name, "LogicPD SOM", sizeof(product_name));
+	}
 	product_name[sizeof(product_name)-1] = '\0';
 	str2wide (product_name, string->wData);
 	fbt_string_table[STR_PRODUCT] = string;
