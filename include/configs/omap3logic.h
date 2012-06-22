@@ -431,7 +431,7 @@
 	"nfsrootpath=/opt/nfs-exports/ltib-omap\0" \
 	"nfsoptions=,wsize=1500,rsize=1500\0"				\
 	"rotation=0\0" \
-	"_autoboot=echo \"\n== Checking mmc1 for alternate boot script " CONFIG_MMC_BOOTSCRIPT_NAME " ==\";" \
+	"autoboot=run _autoboot\0_autoboot=echo \"\n== Checking mmc1 for alternate boot script " CONFIG_MMC_BOOTSCRIPT_NAME " ==\";" \
 	"         if mmc init; then \n" \
 	"             if run _loadbootscript; then \n" \
 	"                 echo \"\"; \n" \
