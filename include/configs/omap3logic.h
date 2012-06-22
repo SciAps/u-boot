@@ -485,7 +485,7 @@
 	"                     echo \"\"; \n" \
 	"                     setenv bootm_arg1 ${loadaddr};\n" \
 	"                 fi\0" \
-	"_load_kernel=setenv bootm_arg1;if run load_kernel_$kernel_location; then;else \n" \
+	"_load_kernel=setenv bootm_arg1;if run _load_kernel_$kernel_location; then;else \n" \
 	"                echo \"\033[31m== kernel_location must be set to ram, nand, mmc, or tftp!! ==\033[0m\"; \n" \
 	"                echo \"\"; \n" \
 	"            fi\n\0" \
