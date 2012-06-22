@@ -32,4 +32,5 @@ extern void mtd_set_part_priv(void *cookie, void *priv);
 extern int mtd_id_parse(const char *id, const char **ret_id,
 			u8 *dev_type, u8 *dev_num, int quiet);
 extern int mtdparts_init(void);
+extern int mtd_part_getmask(struct part_info *part);
 #endif

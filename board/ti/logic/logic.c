@@ -196,6 +196,38 @@ char *get_mtdids_default(void)
 	return omap3logic_mtdids_default;
 }
 
+char *get_mtdflags_default(void)
+{
+#if defined(MTDFLAGS_NAND_DEFAULT) || defined(MTDFLAGS_NOR_DEFAULT)
+	static char str[
+# ifdef MTDFLAGS_NOR_DEFAULT
+	  ARRAY_SIZE(MTDFLAGS_NOR_DEFAULT) +
+# endif
+# ifdef MTDFLAGS_NAND_DEFAULT
+	  ARRAY_SIZE(MTDFLAGS_NAND_DEFAULT) +
+# endif
+	  10] = "";
+
+	if (str[0] == '\0') {
+		str[0] = '\0';
+#ifdef MTDFLAGS_NAND_DEFAULT
+		if (nand_size())
+			strcpy(str, MTDFLAGS_NAND_DEFAULT);
+#endif
+#ifdef MTDFLAGS_NOR_DEFAULT
+		if (omap3logic_nor_exists) {
+			if (strlen(str))
+				strcat(str, ";");
+			strcat(str, MTDFLAGS_NOR_DEFAULT);
+		}
+#endif
+	}
+	return str;
+#else
+	return NULL;
+#endif
+}
+
 /*
  * Touchup the environment, specificaly "defaultecc", the display,
  * and mtdids/mtdparts on default environment

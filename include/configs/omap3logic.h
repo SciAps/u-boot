@@ -185,6 +185,7 @@
 #define MTDPARTS_NAND_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
 					"5m(kernel),20m(ramdisk),-(fs)"
+#define MTDFLAGS_NAND_DEFAULT	"default=ecc_chip;x-loader=ecc_hw,repeat;fs=yaffs"
 
 #define MTDPARTS_NOR_DEFAULT		"physmap-flash.0:-(nor)"
 

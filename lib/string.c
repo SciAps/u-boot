@@ -72,6 +72,29 @@ char * strcpy(char * dest,const char *src)
 }
 #endif
 
+#ifndef __HAVE_ARCH_STPNCPY
+/**
+ * strncpy - Copy a length-limited, %NUL-terminated string
+ * @dest: Where to copy the string to
+ * @src: Where to copy the string from
+ * @count: The maximum number of bytes to copy
+ *
+ * Note that unlike userspace strncpy, this does not %NUL-pad the buffer.
+ * However, the result is not %NUL-terminated if the source exceeds
+ * @count bytes.
+ */
+char * stpncpy(char * dest,const char *src,size_t count)
+{
+	while (count-- && (*dest++ = *src++) != '\0')
+		/* nothing */;
+
+	if(count)
+		return dest-1;
+	else
+		return dest;
+}
+#endif
+
 #ifndef __HAVE_ARCH_STRNCPY
 /**
  * strncpy - Copy a length-limited, %NUL-terminated string

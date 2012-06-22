@@ -35,6 +35,18 @@
 #define MTD_DEV_TYPE(type) ((type == MTD_DEV_TYPE_NAND) ? "nand" :	\
 			(type == MTD_DEV_TYPE_ONENAND) ? "onenand" : "nor")
 
+enum mtdflags
+{
+	MTDFLAGS_ECC_SW,
+	MTDFLAGS_ECC_HW,
+	MTDFLAGS_ECC_CHIP,
+	MTDFLAGS_ECC_BCH,
+	MTDFLAGS_YAFFS,
+	MTDFLAGS_REPEAT,
+};
+
+#define MTDFLAGS_DEFAULT_PERMITTED ((1 << MTDFLAGS_ECC_SW) | (1 << MTDFLAGS_ECC_HW) | (1 << MTDFLAGS_ECC_CHIP) | (1 << MTDFLAGS_ECC_BCH))
+
 struct mtd_device {
 	struct list_head link;
 	struct mtdids *id;		/* parent mtd id entry */
@@ -51,6 +63,7 @@ struct part_info {
 	void *jffs2_priv;		/* used internaly by jffs2 */
 	u32 mask_flags;			/* kernel MTD mask flags */
 	u32 sector_size;		/* size of sector */
+	u32 mtdflags_mask;		/* (1 << enum mtdflags) mask */
 	struct mtd_device *dev;		/* parent device */
 };
 
