@@ -26,6 +26,9 @@ extern char * strcpy(char *,const char *);
 #ifndef __HAVE_ARCH_STRNCPY
 extern char * strncpy(char *,const char *, __kernel_size_t);
 #endif
+#ifndef __HAVE_ARCH_STPNCPY
+extern char * stpncpy(char * dest,const char *src,size_t count);
+#endif
 #ifndef __HAVE_ARCH_STRCAT
 extern char * strcat(char *, const char *);
 #endif

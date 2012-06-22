@@ -619,6 +619,12 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 	mtd = &nand_info[nand_curr_device];
 	nand = mtd->priv;
 
+	if (mode == OMAP_ECC_CHIP && !nand->has_chip_ecc)
+	{
+		printf("NAND: Chip does not have internal ECC!\n");
+		return;
+	}
+
 	nand->options |= NAND_OWN_BUFFERS;
 
 	/* Reset ecc interface */
@@ -693,10 +699,6 @@ void omap_nand_switch_ecc(enum omap_nand_ecc_mode mode)
 		if (nand->has_chip_ecc)
 			micron_set_chip_ecc(mtd, 0);
 	} else if (mode == OMAP_ECC_CHIP) {
-		if (!nand->has_chip_ecc) {
-			printf("NAND: Chip does not have internal ECC!\n");
-			return;
-		}
 		nand->ecc.bytes = 0;
 		nand->ecc.size = 2048;
 		nand->ecc.calculate = omap_calculate_chip_hwecc;

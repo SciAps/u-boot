@@ -768,6 +768,7 @@ int cpu_release(int nr, int argc, char * const argv[]);
 #ifdef CONFIG_MTDPARTS_DYNAMIC_DEFAULT
 extern char *get_mtdids_default(void);
 extern char *get_mtdparts_default(void);
+extern char *get_mtdflags_default(void);
 #endif /* CONFIG_MTDPARTS_DYNAMIC_DEFAULT */
 #endif /* __ASSEMBLY__ */
 

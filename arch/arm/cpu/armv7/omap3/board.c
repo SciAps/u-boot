@@ -248,7 +248,7 @@ void abort(void)
 /******************************************************************************
  * OMAP3 specific command to switch between NAND HW and SW ecc
  *****************************************************************************/
-static int do_switch_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+int do_switch_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
 	struct mtd_info *mtd;
 	struct nand_chip *nand;

@@ -28,9 +28,73 @@
 #include <jffs2/jffs2.h>
 #include <nand.h>
 
+#include <asm/arch-omap3/sys_proto.h>
+
 #if defined(CONFIG_CMD_MTDPARTS)
 #include "mtd_parts.h"
 #endif
+
+extern int omap_nand_ecc_auto;
+
+static int switch_ecc_bypart(const char *id)
+{
+	struct mtd_info *mtd_info;
+	struct nand_chip *nand;
+	struct mtd_device *mtd;
+	struct part_info *part;
+	int flags = 0;
+	u8 part_num;
+
+	if(mtdparts_init() == 0 && find_dev_and_part(id, &mtd, &part_num, &part, 0) == 0)
+	{
+		if(mtd->id->type != MTD_DEV_TYPE_NAND)
+		{
+			printf("Automatic ECC selection only works against NAND partitions.\n");
+			return -1;
+		}
+
+		if(mtd->id->num < 0 ||
+		   mtd->id->num >= CONFIG_SYS_MAX_NAND_DEVICE ||
+		   !nand_info[nand_curr_device].name)
+		{
+			printf("\nNo NAND device found\n");
+			return -1;
+		}
+
+		// Use the default flags if needed for decisions below
+		flags = mtd_part_getmask(part);
+		mtd_info = &nand_info[mtd->id->num];
+		nand = mtd_info->priv;
+
+		if(flags & (1 << MTDFLAGS_ECC_SW))
+		{
+			if(nand->ecc.mode != NAND_ECC_SOFT)
+				omap_nand_switch_ecc(OMAP_ECC_SOFT);
+		} else if(flags & (1 << MTDFLAGS_ECC_HW))
+		{
+			if(nand->ecc.mode != NAND_ECC_HW)
+				omap_nand_switch_ecc(OMAP_ECC_HW);
+		} else if(flags & (1 << MTDFLAGS_ECC_CHIP))
+		{
+			if(!nand->has_chip_ecc)
+			{
+				printf("NAND Chip doesn't support in-chip ECC\n");
+				return -1;
+			}
+			if(nand->ecc.mode != NAND_ECC_CHIP)
+				omap_nand_switch_ecc(OMAP_ECC_CHIP);
+			printf("Here\n");
+		} else if(flags & (1 << MTDFLAGS_ECC_BCH))
+		{
+			if(nand->ecc.mode != NAND_ECC_SOFT_BCH)
+				omap_nand_switch_ecc(OMAP_ECC_SOFT_BCH);
+		} else {
+			printf("Unknown ECC mode for %s\n", id);
+		}
+	}
+
+	return flags;
+}
 
 static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 {
@@ -182,10 +246,13 @@ static int arg_off(const char *arg, int *idx, loff_t *off, loff_t *maxsize)
 }
 
 static int arg_off_size(int argc, char *const argv[], int *idx,
-			loff_t *off, loff_t *size)
+			loff_t *off, loff_t *size, loff_t *maxsize)
 {
+	loff_t int_maxsize;
 	int ret;
-	loff_t maxsize;
+
+	if(maxsize == NULL)
+		maxsize = &int_maxsize;
 
 	if (argc == 0) {
 		*off = 0;
@@ -193,12 +260,12 @@ static int arg_off_size(int argc, char *const argv[], int *idx,
 		goto print;
 	}
 
-	ret = arg_off(argv[0], idx, off, &maxsize);
+	ret = arg_off(argv[0], idx, off, maxsize);
 	if (ret)
 		return ret;
 
 	if (argc == 1) {
-		*size = maxsize;
+		*size = *maxsize;
 		goto print;
 	}
 
@@ -207,7 +274,7 @@ static int arg_off_size(int argc, char *const argv[], int *idx,
 		return -1;
 	}
 
-	if (*size > maxsize) {
+	if (*size > *maxsize) {
 		puts("Size exceeds partition or device limit\n");
 		return -1;
 	}
@@ -450,6 +517,11 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 		return 0;
 	}
 
+	if (strcmp(cmd, "ecc") == 0 && argc == 3) {
+		switch_ecc_bypart(argv[2]);
+		return 0;
+	}
+
 	/*
 	 * Syntax is:
 	 *   0    1     2       3    4
@@ -490,7 +562,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		printf("\nNAND %s: ", cmd);
 		/* skip first two or three arguments, look for offset and size */
-		if (arg_off_size(argc - o, argv + o, &dev, &off, &size) != 0)
+		if (arg_off_size(argc - o, argv + o, &dev, &off, &size, NULL) != 0)
 			return 1;
 
 		nand = &nand_info[dev];
@@ -545,7 +617,9 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	if (strncmp(cmd, "read", 4) == 0 || strncmp(cmd, "write", 5) == 0) {
+		int rw_mode = 0;
 		size_t rwsize;
+		loff_t maxsize;
 		int read;
 
 		if (argc < 4)
@@ -555,14 +629,25 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 
 		read = strncmp(cmd, "read", 4) == 0; /* 1 = read, 0 = write */
 		printf("\nNAND %s: ", read ? "read" : "write");
-		if (arg_off_size(argc - 3, argv + 3, &dev, &off, &size) != 0)
+		if (arg_off_size(argc - 3, argv + 3, &dev, &off, &size, &maxsize) != 0)
 			return 1;
 
 		nand = &nand_info[dev];
 		rwsize = size;
 
 		s = strchr(cmd, '.');
-		if (!s || !strcmp(s, ".jffs2") ||
+		if(s && !strcmp(s, ".auto"))
+		{
+			int flags = switch_ecc_bypart(argv[3]);
+			if(flags == -1)
+				return 1;
+			rw_mode = 1;
+			if((flags & (1 << MTDFLAGS_YAFFS)) && !read)
+				rw_mode = 2;
+			if((flags & (1 << MTDFLAGS_REPEAT)) && !read)
+				rw_mode = 3;
+		}
+		if (!s || rw_mode == 1 || !strcmp(s, ".jffs2") ||
 		    !strcmp(s, ".e") || !strcmp(s, ".i")) {
 			if (read)
 				ret = nand_read_skip_bad(nand, off, &rwsize,
@@ -571,11 +656,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 				ret = nand_write_skip_bad(nand, off, &rwsize,
 							  (u_char *)addr, 0);
 #ifdef CONFIG_CMD_NAND_YAFFS
-		} else if (!strcmp(s, ".yaffs")) {
-			if (read) {
-				printf("Unknown nand command suffix '%s'.\n", s);
-				return 1;
-			}
+		} else if (!read && (rw_mode == 2 || !strcmp(s, ".yaffs"))) {
 			ret = nand_write_skip_bad(nand, off, &rwsize, (u_char *)addr, 1);
 #endif
 		} else if (!strcmp(s, ".oob")) {
@@ -590,6 +671,38 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 				ret = nand->read_oob(nand, off, &ops);
 			else
 				ret = nand->write_oob(nand, off, &ops);
+		} else if (!read && (rw_mode == 3 || !strcmp(s, ".repeat"))) {
+			int off_max = off + maxsize;
+			loff_t tmp;
+			if (str2off(argv[3], &tmp))
+			{
+				printf("nand write.repeat does _NOT_ support nand offsets.\n");
+				printf("(e.g. you MUST use a partition name)\n");
+				return 0;
+			}
+			if ((off & (nand->writesize - 1)) != 0) {
+				ret = 1;
+			} else {
+				if(size > nand->erasesize)
+				{
+					printf("Cannot write larger than block size for write.repeat (%i > %i)\n",
+						(unsigned int)size, nand->erasesize);
+					return 1;
+				}
+				printf("\n");
+				for(;off < off_max;off += nand->erasesize)
+				{
+					rwsize = size;
+					if(!nand_block_isbad(nand, off))
+					{
+						printf("Writing %i bytes to %x ", rwsize, (unsigned int)off);
+						ret = nand_write(nand, off, &rwsize, (u_char *)addr);
+						printf("(wrote %i bytes)\n", (unsigned int)rwsize);
+					} else {
+						printf("Skipping bad block %x\n", (unsigned int)off);
+					}
+				}
+			}
 		} else {
 			printf("Unknown nand command suffix '%s'.\n", s);
 			return 1;
@@ -667,7 +780,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	if (strcmp(cmd, "unlock") == 0) {
-		if (arg_off_size(argc - 2, argv + 2, &dev, &off, &size) < 0)
+		if (arg_off_size(argc - 2, argv + 2, &dev, &off, &size, NULL) < 0)
 			return 1;
 
 		if (!nand_unlock(&nand_info[dev], off, size)) {
@@ -699,6 +812,10 @@ U_BOOT_CMD(
 	"    write 'size' bytes starting at offset 'off' with yaffs format\n"
 	"    from memory address 'addr', skipping bad blocks.\n"
 #endif
+	"nand write.repeat - addr off|partition size\n"
+	"    write 'size' bytes starting at offset 'off'\n"
+	"    from memory address 'addr', repeating the write for\n"
+	"    every block in the partition\n"
 	"nand erase[.spread] [clean] off size - erase 'size' bytes "
 	"from offset 'off'\n"
 	"    With '.spread', erase enough for given file size, otherwise,\n"
@@ -728,6 +845,10 @@ U_BOOT_CMD(
 	"\n"
 	"nand debug [level] - display or set the MTD debug level"
 #endif
+	"nand write.auto addr partition [size]\n"
+	"    write 'size' bytes to partition.  Auto-picks ECC and\n"
+	"    write.yaffs or write.repeat variants based on mtdflags\n"
+	"    for the given partition.\n"
 );
 
 static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,

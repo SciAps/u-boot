@@ -189,9 +189,9 @@ int logic_dump_serialization_info(void)
 	int ret;
 	struct id_cookie cookie;
 	int part_number;
-	u8 model_name[32];
+	u8 model_name[33];
 	u32 model_name_size;
-	u8 serial_number[10];
+	u8 serial_number[11];
 	u32 serial_number_size;
 
 	if (!found_id_data) {
@@ -212,7 +212,7 @@ int logic_dump_serialization_info(void)
 	}
 
 	/* Find serial_number */
-	serial_number_size = sizeof(serial_number);
+	serial_number_size = sizeof(serial_number) - 1;
 	ret = id_find_string(&cookie, ID_KEY_serial_number, serial_number, &serial_number_size);
 	if (ret != ID_EOK) {
 		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
@@ -241,12 +241,15 @@ int logic_dump_serialization_info(void)
 	}
 
 	/* Find model name */
-	model_name_size = sizeof(model_name);
+	model_name_size = sizeof(model_name) - 1;
 	ret = id_find_string(&cookie, ID_KEY_model_name, model_name, &model_name_size);
 	if (ret != ID_EOK) {
 		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	}
+
+	model_name[model_name_size] = '\0';
+	serial_number[serial_number_size] = '\0';
 
 	printf("Part Number  : %u\n", part_number);
 	printf("Model Name   : %.*s\n", model_name_size, model_name);

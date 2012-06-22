@@ -132,6 +132,12 @@ static const char *const mtdids_default = MTDIDS_DEFAULT;
 static const char *const mtdids_default = NULL;
 #endif
 
+#if defined(MTDFLAGS_DEFAULT)
+staitc const char *const mtdflags_default = MTDFLAGS_DEFAULT;
+#else
+staitc const char *const mtdflags_default = NULL;
+#endif
+
 #if defined(MTDPARTS_DEFAULT)
 static const char *const mtdparts_default = MTDPARTS_DEFAULT;
 #else
@@ -145,6 +151,10 @@ char *get_mtdids_default(void)
 {
 	return (char *)mtdids_default;
 }
+char *get_mtdflags_default(void)
+{
+	return (char *)mtdflags_default;
+}
 #endif
 
 /* copies of last seen 'mtdids', 'mtdparts' and 'partition' env variables */
@@ -153,7 +163,9 @@ char *get_mtdids_default(void)
 #define PARTITION_MAXLEN	16
 static char last_ids[MTDIDS_MAXLEN];
 static char last_parts[MTDPARTS_MAXLEN];
+static char last_flags[MTDPARTS_MAXLEN];
 static char last_partition[PARTITION_MAXLEN];
+static int  mtdflags_defaultmask;
 
 /* low level jffs2 cache cleaning routine */
 extern void jffs2_free_cache(struct part_info *part);
@@ -173,6 +185,7 @@ static struct part_info* mtd_part_info(struct mtd_device *dev, unsigned int part
 /* command line only routines */
 static struct mtdids* id_find_by_mtd_id(const char *mtd_id, unsigned int mtd_id_len);
 static int device_del(struct mtd_device *dev);
+static char *mtdflags_tostring(int flags, int parenth);
 
 /**
  * Parses a string into a number.  The number stored at ptr is
@@ -1233,6 +1246,79 @@ static int generate_mtdparts_save(char *buf, u32 buflen)
 	return ret;
 }
 
+/**
+ * Process all devices and generate corresponding mtdparts string describing
+ * all partitions on all devices.
+ *
+ * @param buf output buffer holding generated mtdparts string (output)
+ * @param buflen buffer size
+ * @return 0 on success, 1 otherwise
+ */
+static int generate_mtdflags(char *buf, u32 buflen)
+{
+	struct list_head *pentry, *dentry;
+	struct mtd_device *dev;
+	struct part_info *part;
+	char *p = buf;
+	u32 maxlen = buflen - 1;
+	int needs_semicolon=0;
+
+	debug("--- generate_mtdflags ---\n");
+
+	if (list_empty(&devices)) {
+		buf[0] = '\0';
+		return 0;
+	}
+
+	buf[0] = '\0';
+
+	if(mtdflags_defaultmask)
+	{
+		p = stpncpy(p, "default=", maxlen - (p - buf));
+		p = stpncpy(p, mtdflags_tostring(mtdflags_defaultmask, 0), maxlen - (p - buf));
+		needs_semicolon = 1;
+	}
+
+	list_for_each(dentry, &devices) {
+		dev = list_entry(dentry, struct mtd_device, link);
+		list_for_each(pentry, &dev->parts) {
+			part = list_entry(pentry, struct part_info, link);
+
+			if(part->mtdflags_mask)
+			{
+				// Append the name
+				if(needs_semicolon)
+					p = stpncpy(p, ";", maxlen - (p - buf));
+				p = stpncpy(p, part->name, maxlen - (p - buf));
+				p = stpncpy(p, "=", maxlen - (p - buf));
+				p = stpncpy(p, mtdflags_tostring(part->mtdflags_mask, 0), maxlen - (p - buf));
+				needs_semicolon=1;
+			}
+		}
+	}
+
+	/* we still have at least one char left, as we decremented maxlen at
+	 * the begining */
+	*p = '\0';
+
+	return 0;
+}
+
+
+static int generate_mtdflags_save(char *buf, u32 buflen)
+{
+	int ret;
+
+	ret = generate_mtdflags(buf, buflen);
+
+	if ((buf[0] != '\0') && (ret == 0))
+		setenv("mtdflags", buf);
+	else
+		setenv("mtdflags", NULL);
+
+	return ret;
+}
+
 #if defined(CONFIG_CMD_MTDPARTS_SHOW_NET_SIZES)
 /**
  * Get the net size (w/o bad blocks) of the given partition.
@@ -1277,7 +1363,7 @@ static void print_partition_table(void)
 		printf("\ndevice %s%d <%s>, # parts = %d\n",
 				MTD_DEV_TYPE(dev->id->type), dev->id->num,
 				dev->id->mtd_id, dev->num_parts);
-		printf(" #: name\t\tsize\t\tnet size\toffset\t\tmask_flags\n");
+		printf(" #: name\t\tsize\t\tnet size\toffset\t\tmask_flags\tnand_flags\n");
 
 		list_for_each(pentry, &dev->parts) {
 			u32 net_size;
@@ -1286,21 +1372,24 @@ static void print_partition_table(void)
 			part = list_entry(pentry, struct part_info, link);
 			net_size = net_part_size(mtd, part);
 			size_note = part->size == net_size ? " " : " (!)";
-			printf("%2d: %-20s0x%08x\t0x%08x%s\t0x%08x\t%d\n",
+			printf("%2d: %-20s0x%08x\t0x%08x%s\t0x%08x\t%d\t\t%s\n",
 					part_num, part->name, part->size,
 					net_size, size_note, part->offset,
-					part->mask_flags);
+					part->mask_flags,
+					mtdflags_tostring(part->mtdflags_mask, 1)
+					);
 #else /* !defined(CONFIG_CMD_MTDPARTS_SHOW_NET_SIZES) */
 		printf("\ndevice %s%d <%s>, # parts = %d\n",
 				MTD_DEV_TYPE(dev->id->type), dev->id->num,
 				dev->id->mtd_id, dev->num_parts);
-		printf(" #: name\t\tsize\t\toffset\t\tmask_flags\n");
+		printf(" #: name\t\tsize\t\toffset\t\tmask_flags\tnand_flags\n");
 
 		list_for_each(pentry, &dev->parts) {
 			part = list_entry(pentry, struct part_info, link);
-			printf("%2d: %-20s0x%08x\t0x%08x\t%d\n",
+			printf("%2d: %-20s0x%08x\t0x%08x\t%d\t\t%s\n",
 					part_num, part->name, part->size,
-					part->offset, part->mask_flags);
+					part->offset, part->mask_flags,
+					mtdflags_tostring(part->mtdflags_mask, 1));
 #endif /* defined(CONFIG_CMD_MTDPARTS_SHOW_NET_SIZES) */
 			part_num++;
 		}
@@ -1317,7 +1406,7 @@ static void print_partition_table(void)
 static void list_partitions(void)
 {
 	struct part_info *part;
-	char *mtdids_default, *mtdparts_default;
+	char *mtdids_default, *mtdparts_default, *mtdflags_default;
 
 	debug("\n---list_partitions---\n");
 	print_partition_table();
@@ -1345,9 +1434,12 @@ static void list_partitions(void)
 	 * printbuffer. Use puts() to prevent system crashes.
 	 */
 	mtdparts_default = get_mtdparts_default();
-	puts("mtdparts: ");
-	puts(mtdparts_default ? mtdparts_default : "none");
-	puts("\n");
+	printf("mtdparts: %s\n",
+	       mtdparts_default ? mtdparts_default : "none");
+
+	mtdflags_default = get_mtdflags_default();
+	printf("mtdflags: %s\n",
+	       mtdflags_default ? mtdflags_default : "none");
 }
 
 /**
@@ -1432,6 +1524,7 @@ static int delete_partition(const char *id)
 	u8 pnum;
 	struct mtd_device *dev;
 	struct part_info *part;
+	int ret;
 
 	if (find_dev_and_part(id, &dev, &pnum, &part, 0) == 0) {
 
@@ -1443,10 +1536,14 @@ static int delete_partition(const char *id)
 			return 1;
 
 		if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
+			ret = 1;
 			printf("generated mtdparts too long, reseting to null\n");
-			return 1;
 		}
-		return 0;
+		if (generate_mtdflags_save(last_flags, ARRAY_SIZE(last_flags)) != 0) {
+			ret = 1;
+			printf("generated mtdflags too long, resetting to null\n");
+		}
+		return ret;
 	}
 
 	printf("partition %s not found\n", id);
@@ -1511,6 +1608,7 @@ static int spread_partitions(void)
 	struct mtd_info *mtd;
 	int part_num;
 	uint64_t cur_offs;
+	int ret = 0;
 
 	list_for_each(dentry, &devices) {
 		dev = list_entry(dentry, struct mtd_device, link);
@@ -1541,10 +1639,14 @@ static int spread_partitions(void)
 	index_partitions();
 
 	if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
+		ret = 1;
 		printf("generated mtdparts too long, reseting to null\n");
-		return 1;
 	}
-	return 0;
+	if (generate_mtdflags_save(last_flags, ARRAY_SIZE(last_flags)) != 0) {
+		ret = 1;
+		printf("generated mtdflags too long, resetting to null\n");
+	}
+	return ret;
 }
 #endif /* CONFIG_CMD_MTDPARTS_SPREAD */
 
@@ -1601,6 +1703,160 @@ static int parse_mtdparts(const char *const mtdparts)
 		return 1;
 	}
 
+	return 0;
+}
+
+/*
+ * mtdflags - partitionid1=flag1,flag2,flag3;partitionid2=flag1,flag2,flag3;...
+
+
+setenv mtdflags 'default=ecc_chip;x-loader=ecc_hw,repeat;system=yaffs;userdata=yaffs;cache=yaffs'
+mtdparts ecc x-loader
+
+ */
+const char *const mtdflags_strings[] = {
+	[MTDFLAGS_ECC_SW] = "ecc_sw",
+	[MTDFLAGS_ECC_HW] = "ecc_hw",
+	[MTDFLAGS_ECC_CHIP] = "ecc_chip",
+	[MTDFLAGS_ECC_BCH] = "ecc_bch",
+	[MTDFLAGS_YAFFS] = "yaffs",
+	[MTDFLAGS_REPEAT] = "repeat",
+};
+
+static int validate_mtdflags(int mask)
+{
+	int ecccnt = 0;
+	if((1 << MTDFLAGS_ECC_SW) & mask)
+		ecccnt++;
+	if((1 << MTDFLAGS_ECC_HW) & mask)
+		ecccnt++;
+	if((1 << MTDFLAGS_ECC_CHIP) & mask)
+		ecccnt++;
+	if((1 << MTDFLAGS_ECC_BCH) & mask)
+		ecccnt++;
+
+	return ecccnt <= 1;
+}
+
+static int parse_mtdflags_findmask(const char *const flags, int len)
+{
+	int i;
+
+	for(i=0;i<ARRAY_SIZE(mtdflags_strings);++i)
+	{
+		if(mtdflags_strings[i] &&
+		   strlen(mtdflags_strings[i]) == len &&
+		   strncmp(mtdflags_strings[i], flags, len) == 0)
+		{
+			return 1 << i;
+		}
+	}
+	return 0;
+}
+
+static char *mtdflags_tostring(int flags, int include_defaults)
+{
+	static char str[64];
+	char *cur = str;
+	int i;
+	int comma = 0;
+	int from_common = mtdflags_defaultmask;
+
+	if(flags & MTDFLAGS_DEFAULT_PERMITTED)
+	{
+		from_common = 0;
+	}
+
+	str[0] = '\0';
+
+	for(i=0;i < ARRAY_SIZE(mtdflags_strings);++i)
+	{
+		if(include_defaults && ((1 << i) & from_common))
+		{
+			if(comma)
+				cur = stpncpy(cur, ",", ARRAY_SIZE(str) - (cur - str));
+			cur = stpncpy(cur, "(", ARRAY_SIZE(str) - (cur - str));
+			cur = stpncpy(cur, mtdflags_strings[i], ARRAY_SIZE(str) - (cur - str));
+			cur = stpncpy(cur, ")", ARRAY_SIZE(str) - (cur - str));
+			comma=1;
+		}
+		if((1 << i) & flags)
+		{
+			if(comma)
+				cur = stpncpy(cur, ",", ARRAY_SIZE(str) - (cur - str));
+			cur = stpncpy(cur, mtdflags_strings[i], ARRAY_SIZE(str) - (cur - str));
+			comma=1;
+		}
+	}
+	str[ARRAY_SIZE(str) - 1] = '\0';
+	return str;
+}
+
+static int parse_mtdflags(const char *const mtdflags)
+{
+	const char *part, *part_end;
+	const char *flags, *flags_end;
+
+	if(!mtdflags)
+		return 1;
+
+	part = flags_end = mtdflags;
+
+	while(*part != '\0')
+	{
+		// Bring the pointer "part" past all blank items
+		for(part=flags_end;*part && (*part == ';' || *part == ' ');++part);
+		// Bring the pointer "flags" past the equals sign
+		for(part_end=part;*part_end && *part_end != '=';++part_end);
+		for(flags=part_end;*flags && *flags == '=';++flags);
+		// Bring the pointer "p" to the next partition
+		for(flags_end=flags;*flags_end && *flags_end != ';';++flags_end);
+
+		// Now, make sure it's sane
+		if(part != part_end && flags != flags_end && part != flags_end)
+		{
+			struct list_head *dentry, *pentry;
+			struct mtd_device *dev;
+			struct part_info *parti;
+			int mask = 0;
+
+			while(flags < flags_end)
+			{
+				const char *cur = flags;
+
+				for(;flags < flags_end && *flags != ',';++flags);
+				mask |= parse_mtdflags_findmask(cur, flags - cur);
+				for(;flags < flags_end && *flags == ',';++flags);
+			}
+			if(!validate_mtdflags(mask))
+			{
+				return 1;
+			}
+			if(strncmp(part, "default", 7) == 0)
+			{
+				mtdflags_defaultmask = mask & MTDFLAGS_DEFAULT_PERMITTED;
+				continue;
+			}
+
+			list_for_each(dentry, &devices)
+			{
+				dev = list_entry(dentry, struct mtd_device, link);
+				list_for_each(pentry, &dev->parts)
+				{
+					parti = list_entry(pentry, struct part_info, link);
+					if(strlen(parti->name) == part_end - part &&
+					   strncmp(parti->name, part, part_end - part) == 0)
+					{
+						parti->mtdflags_mask = mask;
+						goto cont;
+					}
+				}
+			}
+			return 1;
+			cont:
+			continue;
+		}
+	}
 	return 0;
 }
 
@@ -1724,11 +1980,11 @@ static int parse_mtdids(const char *const ids)
 int mtdparts_init(void)
 {
 	static int initialized = 0;
-	const char *ids, *parts;
+	const char *ids, *parts, *flags;
 	const char *current_partition;
 	int ids_changed;
 	char tmp_ep[PARTITION_MAXLEN];
-	char *mtdids_default, *mtdparts_default;
+	char *mtdids_default;
 
 	debug("\n---mtdparts_init---\n");
 	if (!initialized) {
@@ -1743,6 +1999,7 @@ int mtdparts_init(void)
 	/* get variables */
 	ids = getenv("mtdids");
 	parts = getenv("mtdparts");
+	flags = getenv("mtdflags");
 	current_partition = getenv("partition");
 
 	/* save it for later parsing, cannot rely on current partition pointer
@@ -1802,9 +2059,18 @@ int mtdparts_init(void)
 	}
 
 	/* parse partitions if either mtdparts or mtdids were updated */
-	if (parts && ((last_parts[0] == '\0') || ((strcmp(last_parts, parts) != 0)) || ids_changed)) {
+	if (parts && (last_parts[0] == '\0' ||
+	    strcmp(last_parts, parts) != 0 ||
+	    ids_changed ||
+	    (flags && strcmp(last_flags, flags) != 0))) {
 		if (parse_mtdparts(parts) != 0)
 			return 1;
+
+		if(flags && parse_mtdflags(flags))
+		{
+			printf("Bad mtdflags.\n");
+			return 1;
+		}
 
 		if (list_empty(&devices)) {
 			printf("mtdparts_init: no valid partitions\n");
@@ -1813,6 +2079,10 @@ int mtdparts_init(void)
 
 		/* ok it's good, save new parts */
 		strncpy(last_parts, parts, MTDPARTS_MAXLEN);
+		if(flags)
+			strncpy(last_flags, flags, MTDPARTS_MAXLEN);
+		else
+			last_flags[0] = '\0';
 
 		/* reset first partition from first dev from the list as current */
 		current_mtd_dev = list_entry(devices.next, struct mtd_device, link);
@@ -1851,6 +2121,14 @@ int mtdparts_init(void)
 	}
 
 	return 0;
+}
+
+int mtd_part_getmask(struct part_info *part)
+{
+	if(part->mtdflags_mask & MTDFLAGS_DEFAULT_PERMITTED)
+		return part->mtdflags_mask;
+	else
+		return part->mtdflags_mask | mtdflags_defaultmask;
 }
 
 /**
@@ -1948,14 +2226,17 @@ int do_chpart(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
  */
 int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	char *mtdids_default, *mtdparts_default;
+	char *mtdids_default, *mtdparts_default, *mtdflags_default;
+	int ret = 0;
 
 	if (argc == 2) {
 		if (strcmp(argv[1], "default") == 0) {
 			mtdids_default = get_mtdids_default();
 			mtdparts_default = get_mtdparts_default();
+			mtdflags_default = get_mtdflags_default();
 			setenv("mtdids", (char *)mtdids_default);
 			setenv("mtdparts", (char *)mtdparts_default);
+			setenv("mtdflags", (char *)mtdflags_default);
 			setenv("partition", NULL);
 
 			mtdparts_init();
@@ -2044,11 +2325,15 @@ int do_mtdparts(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		if (generate_mtdparts_save(last_parts, MTDPARTS_MAXLEN) != 0) {
+			ret = 1;
 			printf("generated mtdparts too long, reseting to null\n");
-			return 1;
+		}
+		if (generate_mtdflags_save(last_flags, ARRAY_SIZE(last_flags)) != 0) {
+			ret = 1;
+			printf("generated mtdflags too long, resetting to null\n");
 		}
 
-		return 0;
+		return ret;
 	}
 
 	/* mtdparts del part-id */
@@ -2119,6 +2404,17 @@ U_BOOT_CMD(
 	"<offset>   := partition start offset within the device\n"
 	"<name>     := '(' NAME ')'\n"
 	"<ro-flag>  := when set to 'ro' makes partition read-only (not used, passed to kernel)"
+	"mtdflags=<flag-def>[;<flag-def>...]\n\n"
+	"<flag-def> := <part-def>=<flag>[,<flag>...]\n"
+	"Flags affecting ECC modes (only applicable when \"nandecc auto\" is selected):\n"
+	"  ecc_sw   = Select SW ECC for NAND writes\n"
+	"  ecc_hw   = Select HW ECC for NAND writes\n"
+	"  ecc_chip = Select ON-Chip ECC for NAND writes\n"
+	"  ecc_bch  = Select SW BCH ECC for NAND writes\n"
+	"Flags affecting nand write.auto\n"
+	"  <blank>  = Use nand write\n"
+	"  yaffs    = Use nand write.yaffs\n"
+	"  repeat   = Use nand.write.repeat\n"
 );
 /***************************************************/
 
