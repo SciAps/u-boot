@@ -125,6 +125,12 @@
 /* DDR - I use Micron DDR */
 #define CONFIG_OMAP3_MICRON_DDR		1
 
+#define CONFIG_USB_OMAP3		1
+#define CONFIG_MUSB_UDC			1
+#define CONFIG_FASTBOOT			1
+#define CONFIG_TWL4030_USB		1
+#define CONFIG_USB_DEVICE		1
+
 #if 0
 /* USB
  * Enable CONFIG_MUSB_HCD for Host functionalities MSC, keyboard
@@ -152,15 +158,34 @@
 #endif /* CONFIG_MUSB_HCD */
 
 #ifdef CONFIG_MUSB_UDC
+# ifdef CONFIG_FASTBOOT
+#  define CONFIG_CMD_FASTBOOT
+#  define CONFIG_FASTBOOT_TRANSFER_BUFFER         (PHYS_SDRAM_1 + SZ_16M)
+#  define CONFIG_FASTBOOT_TRANSFER_BUFFER_SIZE    (SZ_128M - SZ_16M)
+   /* if already present, use already existing NAND macros for block & oob size */
+#  define FASTBOOT_NAND_BLOCK_SIZE                2048
+#  define FASTBOOT_NAND_OOB_SIZE                  64
+   /* Fastboot product name */
+#  define FASTBOOT_PRODUCT_NAME   "dm3730logic"
+   /* Use HS */
+#  define USB_BCD_VERSION                 0x0200
+
+#  define CONFIG_USBD_VENDORID		0x0451
+#  define CONFIG_USBD_PRODUCTID		0x5678
+#  define CONFIG_USBD_MANUFACTURER	"LogicPD"
+#  define CONFIG_USBD_PRODUCT_NAME	"EVM"
+//#  define CONFIG_USBD_PRODUCT_NAME	getenv("logic_model")
+# else
 /* USB device configuration */
-#define CONFIG_USB_DEVICE		1
-#define CONFIG_USB_TTY			1
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
+#  define CONFIG_USB_DEVICE		1
+#  define CONFIG_USB_TTY			1
+#  define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
 /* Change these to suit your needs */
-#define CONFIG_USBD_VENDORID		0x0451
-#define CONFIG_USBD_PRODUCTID		0x5678
-#define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
-#define CONFIG_USBD_PRODUCT_NAME	"EVM"
+#  define CONFIG_USBD_VENDORID		0x0451
+#  define CONFIG_USBD_PRODUCTID		0x5678
+#  define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
+#  define CONFIG_USBD_PRODUCT_NAME	"EVM"
+# endif /* CONFIG_FASTBOOT */
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_OMAP3 */

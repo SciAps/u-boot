@@ -589,10 +589,14 @@ void _dump_production_data(void)
 
 	extract_model_number_revision(&product_id_data, buf, sizeof(buf));
 	if (strlen(buf))
+	{
 		printf("Model Name   : %s\n", buf);
+		setenv("logic_model", buf);
+	}
 
 	extract_serial_number(&product_id_data, buf, sizeof(buf));
 	printf("Serial Number: %s\n", buf);
+	setenv("logic_serial", buf);
 
 	ret = extract_mac_address(&product_id_data, 0, mac);
 	if (!ret) {

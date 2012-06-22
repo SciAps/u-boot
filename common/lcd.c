@@ -1227,7 +1227,7 @@ void lcd_percent_update(int size)
 	}
 }
 
-static int do_lcd_percent (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+int do_lcd_percent (cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
 	if (argc > 1)
 		strncpy(percent_data.string, argv[1], sizeof(percent_data.string) - 1);

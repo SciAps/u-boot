@@ -180,11 +180,15 @@ static void musb_peri_softconnect(void)
 	/* Power on MUSB */
 	power = readb(&musbr->power);
 	power |= MUSB_POWER_SOFTCONN;
+#if USB_BCD_VERSION == 0x0200
+	power |= MUSB_POWER_HSENAB;
+#else
 	/*
 	 * The usb device interface is usb 1.1
 	 * Disable 2.0 high speed by clearring the hsenable bit.
 	 */
 	power &= ~MUSB_POWER_HSENAB;
+#endif
 	writeb(power, &musbr->power);
 
 	/* Check if device is in b-peripheral mode */
@@ -786,6 +790,9 @@ void udc_irq(void)
 			if (intrtx)
 				musb_peri_tx(intrtx);
 		} else {
+			udc_device->speed =
+				(readb(&musbr->power) & MUSB_POWER_HSMODE) ?
+					USB_SPEED_HIGH : USB_SPEED_FULL;
 			if (MUSB_INTR_SOF & intrusb) {
 				u8 faddr;
 				faddr = readb(&musbr->faddr);
@@ -881,10 +888,10 @@ void udc_setup_ep(struct usb_device_instance *device, unsigned int id,
 		ep_addr = endpoint->endpoint_address;
 		if (USB_DIR_IN == (ep_addr & USB_ENDPOINT_DIR_MASK)) {
 			/* IN */
-			epinfo[(id * 2) + 1].epsize = endpoint->tx_packetSize;
+			epinfo[((id - 1) * 2) + 1].epsize = endpoint->tx_packetSize;
 		} else {
 			/* OUT */
-			epinfo[id * 2].epsize = endpoint->rcv_packetSize;
+			epinfo[(id - 1) * 2].epsize = endpoint->rcv_packetSize;
 		}
 
 		musb_configure_ep(&epinfo[0],
@@ -899,12 +906,23 @@ void udc_setup_ep(struct usb_device_instance *device, unsigned int id,
 
 void udc_connect(void)
 {
-	/* noop */
+	musb_peri_softconnect();
 }
 
 void udc_disconnect(void)
 {
-	/* noop */
+	u8 power, intrusb;
+	u16 intrrx, intrtx;
+
+	/* Power off MUSB */
+	power = readb(&musbr->power);
+	power &= ~MUSB_POWER_SOFTCONN;
+	writeb(power, &musbr->power);
+
+	/* Read intr to clear */
+	intrusb = readb(&musbr->intrusb);
+	intrrx = readw(&musbr->intrrx);
+	intrtx = readw(&musbr->intrtx);
 }
 
 void udc_enable(struct usb_device_instance *device)
