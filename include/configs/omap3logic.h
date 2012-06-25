@@ -209,7 +209,7 @@
 #define MTDIDS_NOR_DEFAULT		"nor0=physmap-flash.0"
 #define MTDPARTS_NAND_DEFAULT		"mtdparts=omap2-nand.0:512k(x-loader),"\
 					"1664k(u-boot),384k(u-boot-env),"\
-					"10240k(kernel),128000k(system),"\
+					"10240k(boot),128000k(system),"\
 					"128000k(userdata),255488k(cache)"
 #define MTDFLAGS_NAND_DEFAULT	"default=ecc_chip;x-loader=ecc_hw,repeat;system=yaffs;userdata=yaffs;cache=yaffs"
 
@@ -422,7 +422,7 @@
 	"yaffsimage=rootfs.yaffs2\0" \
 	"xloader_partition=x-loader\0" \
 	"uboot_partition=u-boot\0" \
-	"kernel_partition=kernel\0" \
+	"kernel_partition=boot\0" \
 	"ramdisk_partition=ramdisk\0" \
 	"yaffs_partition=fs\0" \
 	"arg_loadcmd=fatload mmc 1\0" \
