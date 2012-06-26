@@ -65,6 +65,8 @@ int at24_shutdown(void)
 	gpio_i2c_config_pin(GPIO_I2C_SCLK, GPIO_I2C_INPUT);
 	/* Restore pins back to their intended use */
 	gpio_i2c_restore_pins();
+
+	return 0;
 }
 
 /* Send the offset to the AT24 chip */

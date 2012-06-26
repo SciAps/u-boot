@@ -21,7 +21,7 @@ int id_dict_find_key(struct id_cookie *cookie, id_keys_t key)
 {
 	int err;
 	unsigned int size;
-	id_keys_t d_key;
+	id_keys_t d_key = (id_keys_t)-1;
 	idenum_t type;
 	struct id_cookie d_cookie = *cookie;
 	struct id_cookie t_cookie;

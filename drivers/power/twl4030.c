@@ -136,7 +136,7 @@ U_BOOT_CMD(poweroff, 1, 1, do_poweroff,
 /* Enable the battery backup charger */
 int twl4030_enable_bb_charging(unsigned int millivolts, unsigned int microamps)
 {
-	u8 val;
+	u8 val = 0;
 
 	if (millivolts >= 3200)
 		val = 0x0c;
