@@ -914,6 +914,10 @@ void udc_disconnect(void)
 	u8 power, intrusb;
 	u16 intrrx, intrtx;
 
+	/* If musbr Null, never initialized MUSB! */
+	if (!musbr)
+		return;
+
 	/* Power off MUSB */
 	power = readb(&musbr->power);
 	power &= ~MUSB_POWER_SOFTCONN;

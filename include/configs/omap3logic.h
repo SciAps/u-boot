@@ -508,13 +508,11 @@
 	"                     echo \"== rootfs located in $rootfs_device ==\"; \n" \
 	"                     echo \"\"; \n" \
 	"                     setenv bootargs ${bootargs} root=${rootfs_device}; \n" \
-	"                     setenv bootm_arg2; \n" \
 	"                 fi\0" \
 	"_load_rootfs_nfs=if true;then;\n" \
 	"                    echo \"== rootfs located at $nfsrootpath on server $serverip ==\"; \n" \
 	"                    echo \"\"; \n" \
 	"                    setenv bootargs ${bootargs} root=/dev/nfs; \n" \
-	"                    setenv bootm_arg2; \n" \
 	"                fi\0" \
 	"_load_rootfs_mmc=if true;then;\n" \
 	"                    echo \"== Loading rootfs file $ramdiskimage to $ramdiskaddr ==\"; \n" \
@@ -652,7 +650,6 @@
 	"                 arg_filename=${yaffsimage};run _checkmmcfile;\n" \
 	"                 run _burncommon;\n" \
 	"                 arg_filename=${yaffsimage};arg_partition=${yaffs_partition};run _burnfile\n" \
-	"                 run _burnfile;\n" \
 	"                 if test $error = '';then;else\n" \
 	"                     setenv kernel_location nand-part\n" \
 	"                     setenv rootfs_location /dev\n" \
