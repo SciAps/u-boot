@@ -412,7 +412,7 @@
 	"display=15\0" \
 	"loadaddr=0x81000000\0" \
 	"kernel_location=mmc \0" \
-	"rootfs_location=mmc \0" \
+	"rootfs_location=blah \0" \
 	"rootfs_type=ramdisk \0" \
 	"rootfs_device=/dev/mtdblock5 \0" \
 	"xloadimage=mlo\0" \
