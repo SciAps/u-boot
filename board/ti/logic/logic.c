@@ -364,35 +364,6 @@ int board_late_init(void)
 	return 0;
 }
 
-/* Turn on VAUX1 voltage to 3.0 volts to drive level shifters and
- * power 3.0v parts (tsc2004 and Product ID chip) */
-#define I2C_TRITON2 0x4b /* Address of Triton power group */
-
-void init_vaux1_voltage(void)
-{
-#ifdef CONFIG_DRIVER_OMAP34XX_I2C
-	unsigned char data;
-	unsigned short msg;
-
-	/* Select the output voltage */
-	data = 0x04;
-	i2c_write(I2C_TRITON2, 0x72, 1, &data, 1);
-	/* Select the Processor resource group */
-	data = 0x20;
-	i2c_write(I2C_TRITON2, 0x72, 1, &data, 1);
-	/* Enable I2C access to the Power bus */
-	data = 0x02;
-	i2c_write(I2C_TRITON2, 0x4a, 1, &data, 1);
-	/* Send message MSB */
-	msg = (1<<13) | (1<<4) | (0xd<<0); /* group(process_grp1):resource(vaux1):res_active; */
-	data = msg >> 8;
-	i2c_write(I2C_TRITON2, 0x4b, 1, &data, 1);
-	/* Send message LSB */
-	data = msg & 0xff;
-	i2c_write(I2C_TRITON2, 0x4c, 1, &data, 1);
-#endif
-}
-
 /* Mux I2C bus pins appropriately for this board */
 int i2c_mux_bux_pins(int bus)
 {
@@ -443,10 +414,15 @@ static void check_sysconfig_regs(void)
  */
 int misc_init_r(void)
 {
-	/* Turn on vaux1 to make sure voltage is to the product ID chip.
-	 * Extract production data from ID chip, used to selectively
+	/* Turn on VAUX1 voltage to 3.0 volts to drive level shifters and
+	 * power 3.0v parts (tsc2004 and Product ID chip) */
+	twl4030_pmrecv_vsel_cfg(TWL4030_PM_RECEIVER_VAUX1_DEDICATED,
+				TWL4030_PM_RECEIVER_VAUX1_VSEL_30,
+				TWL4030_PM_RECEIVER_VAUX1_DEV_GRP,
+				TWL4030_PM_RECEIVER_DEV_GRP_P1);
+
+	/** Extract production data from ID chip, used to selectively
 	 * initialize portions of the system */
-	init_vaux1_voltage();
 	fetch_production_data();
 
 #if defined(CONFIG_CMD_NET)
