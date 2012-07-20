@@ -293,7 +293,10 @@
 
 #define CONFIG_BOOTFILE		uImage
 
-#define CONFIG_PREBOOT \
+#ifdef FASTBOOT_ONLY
+# define CONFIG_PREBOOT "fastboot;poweroff\n"
+#else
+# define CONFIG_PREBOOT \
 	"if true;then\n" \
 	"  echo\n"                                                                                  \
 	"  echo =================================== NOTICE ===================================\n"   \
@@ -323,6 +326,7 @@
 	"  echo =================================== NOTICE ===================================\n"   \
 	"  echo \n " \
 	"fi"
+#endif
 
 #ifdef CONFIG_USB_TTY
 #define OMAP3LOGIC_USBTTY "usbtty=cdc_acm\0"
@@ -331,8 +335,8 @@
 #endif
 
 #define CONFIG_BOOTCOMMAND \
-	"run autoboot"
-	
+	"run check_rebootreason;run autoboot;fastboot"
+
 #define CONFIG_MMC_BOOTSCRIPT_NAME \
         "boot.scr"
 
@@ -457,6 +461,8 @@
 			  "echo \"\"; " \
 	"\0" \
 	\
+	\
+	"check_rebootreason=mw ${loadaddr} 0x424d0062;if cmp ${loadaddr} 0x48002914 1;then mw 0x48002914 0;fastboot;fi;mw 0x48002914 0\0" \
 	/* load_kernel_* targets */ \
 	"_load_kernel_ram=if true;then;\n" \
 	"                  echo \"== kernel located at $Loadaddr ==\n\"\n" \
@@ -769,14 +775,18 @@ extern int omap3logic_nor_exists;
 #define SMNAND_ENV_OFFSET		0x220000 /* environment starts here */
 
 #if defined(CONFIG_CMD_NAND)
-#define CONFIG_SYS_NAND_QUIET_TEST	1
-#define CONFIG_NAND_OMAP_GPMC
-#define CONFIG_MTD_NAND_BCH
-#define CONFIG_MTD_NAND_ECC_BCH
-#define CONFIG_BCH
-#define GPMC_NAND_ECC_LP_x16_LAYOUT	1
-#define CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
+# define CONFIG_SYS_NAND_QUIET_TEST	1
+# define CONFIG_NAND_OMAP_GPMC
+# define CONFIG_MTD_NAND_BCH
+# define CONFIG_MTD_NAND_ECC_BCH
+# define CONFIG_BCH
+# define GPMC_NAND_ECC_LP_x16_LAYOUT	1
+# ifndef FORCED_ENVIRONMENT
+#  define CONFIG_ENV_IS_IN_NAND
+# else
+#  define CONFIG_ENV_IS_NOWHERE
+# endif
+# define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
 #endif
 
 #define CONFIG_ENV_ADDR			CONFIG_ENV_OFFSET
