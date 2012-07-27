@@ -682,7 +682,7 @@
 	"                     setenv rootfs_device /dev/mtdblock5\n" \
 	"                     saveenv\n" \
 	"                 fi\n" \
-	"                 run checkerror;\n" \
+	"                 run _checkerror;\n" \
 	"             fi" \
 	"\0"
 
