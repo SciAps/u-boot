@@ -666,7 +666,7 @@
 	"                 run _checkerror;\n" \
 	"             fi" \
 	"\0" \
-	"makeandroidboot=run _makeyaffsboot\0_makeandroidboot=if true;then;\n" \
+	"makeandroidboot=run _makeandroidboot\0_makeandroidboot=if true;then;\n" \
 	"                 setenv error;\n" \
 	"                 run _initmmc;\n" \
 	"                 arg_filename=system.img;run _checkmmcfile;\n" \
