@@ -781,10 +781,9 @@ extern int omap3logic_nor_exists;
 # define CONFIG_MTD_NAND_ECC_BCH
 # define CONFIG_BCH
 # define GPMC_NAND_ECC_LP_x16_LAYOUT	1
-# ifndef FORCED_ENVIRONMENT
-#  define CONFIG_ENV_IS_IN_NAND
-# else
-#  define CONFIG_ENV_IS_NOWHERE
+# define CONFIG_ENV_IS_IN_NAND
+# ifdef FORCED_ENVIRONMENT
+#  define CONFIG_ENV_FORCED
 # endif
 # define CONFIG_ENV_OFFSET		SMNAND_ENV_OFFSET
 #endif
