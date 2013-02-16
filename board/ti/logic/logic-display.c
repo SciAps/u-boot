@@ -138,6 +138,24 @@ struct logic_panel logic_panels[] = {
 		},
 	},
 	{
+		.name	= "28",
+		.config = OMAP_DSS_LCD_TFT,
+		.acb	= 0x0,
+		.data_lines = 16,
+		.timing = {
+			/* 480 x 272, LQ043T1DG28 */
+			.x_res		= 480,
+			.y_res		= 272,
+			.pixel_clock	= 9000,
+			.hfp		= 3,
+			.hsw		= 42,
+			.hbp		= 2,
+			.vfp		= 2,
+			.vsw		= 11,
+			.vbp		= 4,
+		},
+	},
+	{
 		.name	= "3",
 		.config	= OMAP_DSS_LCD_TFT,
 		.acb	= 0x28,

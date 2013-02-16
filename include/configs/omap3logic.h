@@ -301,14 +301,15 @@
 	"  echo\n"                                                                                  \
 	"  echo =================================== NOTICE ===================================\n"   \
 	"  echo \"The U-Boot environment was not found. If the display is not set properly     \"\n"\
-	"  echo \"linux will not have video support.\"\n"	                                          \
+	"  echo \"linux will not have video support.\"\n"	                                    \
 	"  echo \n"                                                                                 \
 	"  echo \"Valid display options are:\"\n"                                                   \
-	"  echo \"  2 == LQ121S1DG31     TFT SVGA    (12.1)  Sharp\"\n"	                          \
+	"  echo \"  2 == LQ121S1DG31     TFT SVGA    (12.1)  Sharp\"\n"	                            \
 	"  echo \"  3 == LQ036Q1DA01     TFT QVGA    (3.6)   Sharp w/ASIC\"\n"                      \
-	"  echo \"  5 == LQ064D343       TFT VGA     (6.4)   Sharp\"\n"	                          \
-	"  echo \"  7 == LQ10D368        TFT VGA     (10.4)  Sharp\"\n"	                          \
-	"  echo \" 15 == LQ043T1DG01     TFT WQVGA   (4.3)   Sharp (DEFAULT)\"\n"                   \
+	"  echo \"  5 == LQ064D343       TFT VGA     (6.4)   Sharp\"\n"	                            \
+	"  echo \"  7 == LQ10D368        TFT VGA     (10.4)  Sharp\"\n"	                            \
+	"  echo \" 15 == LQ043T1DG01     TFT WQVGA   (4.3)   Sharp \"\n"                            \
+	"  echo \" 28 == LQ043T1DG28     TFT WQVGA   (4.3)   Sharp (DEFAULT)\"\n"                   \
 	"  echo \" vga[-16 OR -24]       LCD VGA     640x480\"\n"                                   \
 	"  echo \" svga[-16 OR -24]      LCD SVGA    800x600\"\n"                                   \
 	"  echo \" xga[-16 OR -24]       LCD XGA     1024x768\"\n"                                  \
@@ -316,9 +317,9 @@
 	"  echo \" sxga[-16 OR -24]      LCD SXGA    1280x1024\"\n"                                 \
 	"  echo \" uxga[-16 OR -24]      LCD UXGA    1600x1200\"\n"                                 \
 	"  echo \n "                                                                                \
-	"  echo \"Default `display` environment variable is now being set to: 15\"\n"               \
-	"  setenv display 15\n"						                          \
-	"  setenv preboot\n"						                          \
+	"  echo \"Default `display` environment variable is now being set to: 28\"\n"               \
+	"  setenv display 28\n"						                            \
+	"  setenv preboot\n"						                            \
 	"  echo \n "                                                                                \
 	"  echo \"At the U-Boot prompt type commands: `setenv display <num>`, then type\"\n"        \
 	"  echo \"`saveenv` to save the environment to NAND flash.  This will avoid seeing\"\n"     \
@@ -413,7 +414,7 @@
 	"disablecharging=no\0" \
 	"mmc_bootscript_addr=0x80FF0000\0" \
 	"disablecharging no\0" \
-	"display=15\0" \
+	"display=28\0" \
 	"loadaddr=0x81000000\0" \
 	"kernel_location=mmc \0" \
 	"rootfs_location=blah \0" \
