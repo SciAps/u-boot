@@ -161,7 +161,7 @@
 # ifdef CONFIG_FASTBOOT
 #  define CONFIG_CMD_FASTBOOT
 #  define CONFIG_FASTBOOT_TRANSFER_BUFFER         (PHYS_SDRAM_1 + SZ_16M)
-#  define CONFIG_FASTBOOT_TRANSFER_BUFFER_SIZE    (SZ_128M - SZ_16M)
+#  define CONFIG_FASTBOOT_TRANSFER_BUFFER_SIZE    (SZ_128M)
    /* if already present, use already existing NAND macros for block & oob size */
 #  define FASTBOOT_NAND_BLOCK_SIZE                2048
 #  define FASTBOOT_NAND_OOB_SIZE                  64
@@ -406,7 +406,11 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	OMAP3LOGIC_USBTTY \
 	"bootargs=\0" \
-	"androidbootargs=setenv bootargs ${bootargs} omap_vout.vid1_static_vrfb_alloc=y vram=32M omapfb.vram=0:16M androidboot.console=${consoledevice} \0" \
+	"androidbootargs=setenv bootargs ${bootargs} omap_vout.vid1_static_vrfb_alloc=y " \
+	"vram=32M omapfb.vram=0:16M " \
+	"androidboot.console=${consoledevice} androidboot.serialno=${logic_serial} " \
+	"androidboot.charger=true" \
+	"\0" \
 	"otherbootargs= \0" \
 	"consoledevice=ttyO0\0" \
 	"autoload=no\0" \

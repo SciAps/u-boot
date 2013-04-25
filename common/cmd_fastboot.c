@@ -714,21 +714,25 @@ static int fbt_handle_flash(char *cmdbuf)
 
 static int fbt_handle_getvar(char *cmdbuf)
 {
+	char *var = cmdbuf + strlen("getvar:");
 	strcpy(priv.response, "OKAY");
-	if(!strcmp(cmdbuf + strlen("getvar:"), "version")) {
+	if(!strcmp(var, "version")) {
 		FBTDBG("getvar version\n");
 		strcpy(priv.response + 4, FASTBOOT_VERSION);
-	} else if(!strcmp(cmdbuf + strlen("getvar:"), "version-bootloader")) {
+	} else if(!strcmp(var, "version-bootloader")) {
 		strncpy(priv.response + 4, version_string,
 			min(strlen(version_string), GETVARLEN));
-	} else if(!strcmp(cmdbuf + strlen("getvar:"), "secure")) {
+	} else if(!strcmp(var, "secure")) {
 		strcpy(priv.response + 4, SECURE);
-	} else if(!strcmp(cmdbuf + strlen("getvar:"), "product")) {
+	} else if(!strcmp(var, "product")) {
 		if (priv.product_name)
 			strcpy(priv.response + 4, priv.product_name);
-	} else if(!strcmp(cmdbuf + strlen("getvar:"), "serialno")) {
+	} else if(!strcmp(var, "serialno")) {
 		if (priv.serial_no)
 			strcpy(priv.response + 4, priv.serial_no);
+	} else if(!strncmp(var, "env_", 4))
+	{
+		strcpy(priv.response + 4, getenv(var + 4));
 	}
 	return 0;
 }
@@ -851,6 +855,15 @@ static int fbt_rx_process(unsigned char *buffer, int length)
 			FBTDBG("boot\n");
 			output_lcd_string("/pAA/kFastboot is continuing boot (timeout)/pBA/k/pCA/k");
 			fbt_handle_boot(cmdbuf);
+		}
+
+		if(memcmp(cmdbuf, "oem ", 4) == 0)
+		{
+			int ret;
+			FBTDBG("oem command\n");
+			ret = run_command(cmdbuf + 4, 0);
+			sprintf(priv.response, "OKAYret=%i", ret);
+			strcpy(priv.response, "OKAY");
 		}
 
 		if(memcmp(cmdbuf, "download:", 9) == 0) {

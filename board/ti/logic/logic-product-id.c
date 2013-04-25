@@ -254,6 +254,8 @@ int logic_dump_serialization_info(void)
 	printf("Part Number  : %u\n", part_number);
 	printf("Model Name   : %.*s\n", model_name_size, model_name);
 	printf("Serial Number: %.*s\n", serial_number_size, serial_number);
+	setenv("logic_serial", serial_number);
+
 	return 0;
 }
 
