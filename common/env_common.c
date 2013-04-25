@@ -245,7 +245,7 @@ void env_relocate (void)
 	env_reloc();
 #endif
 	if (gd->env_valid == 0) {
-#if defined(CONFIG_ENV_FORCED) || defined(CONFIG_ENV_IS_NOWHERE)	/* Environment not changable */
+#if defined(CONFIG_ENV_IS_NOWHERE)	/* Environment not changable */
 		set_default_env(NULL);
 #else
 		show_boot_progress (-60);
@@ -257,6 +257,9 @@ void env_relocate (void)
 		touchup_env(0);
 #endif
 	}
+#if defined(CONFIG_ENV_FORCED)
+	set_default_env(NULL);
+#endif
 }
 
 #ifdef CONFIG_AUTO_COMPLETE
