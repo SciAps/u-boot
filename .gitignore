@@ -34,6 +34,7 @@
 /u-boot.dis
 /u-boot.lds
 
+/u-boot-fastboot-only
 /u-boot-no-environ_bin
 /u-boot.bin.ift
 
