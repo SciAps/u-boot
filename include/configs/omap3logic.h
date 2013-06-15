@@ -228,7 +228,7 @@
 #define CONFIG_CMD_CACHE	/* Cache control		*/
 #define CONFIG_CMD_TIME		/* time command			*/
 
-#if 0
+#if 1
 /* L2 was disabled since observed that large displays (720p) weren't working
  * Verify can boot kernel using either XGA or 720p HDMI displays settings */
 #define CONFIG_L2_OFF			1 /* Keep L2 Cache Disabled */

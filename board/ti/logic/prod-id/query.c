@@ -2,6 +2,9 @@
 #include "internals.h"
 #include "id-errno.h"
 
+// This is only for debugging purposes. Set to zero to deactivate.
+#define SPOOF_VERSION_CODE 0
+
 static int id_extract_key(struct id_cookie *cookie, id_keys_t *key)
 {
 	int err;
@@ -156,6 +159,13 @@ int id_find_number(struct id_cookie *cookie, id_keys_t key, int *num)
 	if (err != ID_EOK)
 		return err;
 	/* Extract the number size */
+#if SPOOF_VERSION_CODE	
+	if ((cookie->offset == 509) && (key == ID_KEY_version_code))
+	{	
+		*num = SPOOF_VERSION_CODE;
+		return ID_EOK;
+	}
+#endif
 	l_num = extract_unsigned_pnum(&d_cookie, 5, &err);
 	if (err != ID_EOK)
 		return err;

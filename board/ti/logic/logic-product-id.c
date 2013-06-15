@@ -188,18 +188,26 @@ int logic_dump_serialization_info(void)
 {
 	int ret;
 	struct id_cookie cookie;
-	int part_number;
+	int part_number, speed, model_number, version_code;
 	u8 model_name[33];
+	u8 model_type[11];
+	u8 model_grade[11];
+	u8 hardware_platform[11];
 	u32 model_name_size;
+	u32 model_type_size;
+	u32 model_grade_size;
 	u8 serial_number[11];
 	u32 serial_number_size;
+	u32 model_hardware_platform_size;
 
 	if (!found_id_data) {
+		printf("No ID data found\n");
 		return -1;
 	}
 
 	ret = id_init_cookie(&id_data, &cookie);
 	if (ret != ID_EOK) {
+		printf("Cannot initialize the ID data\n");
 		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	}
@@ -240,6 +248,19 @@ int logic_dump_serialization_info(void)
 		return ret;
 	}
 
+	/* Find version code */
+	ret = id_find_number(&cookie, ID_KEY_version_code, &version_code);
+//printf("%s[%u] cookie.mem_ptr: 0x%08x, cookie.offset: %u, val: %02x %02x %02x %02x\n", __FILE__, __LINE__, cookie.mem_ptr, cookie.offset, 
+//	*(unsigned char*)((unsigned int)cookie.mem_ptr + cookie.offset + 0),
+//	*(unsigned char*)((unsigned int)cookie.mem_ptr + cookie.offset + 1),
+//	*(unsigned char*)((unsigned int)cookie.mem_ptr + cookie.offset + 2),
+//	*(unsigned char*)((unsigned int)cookie.mem_ptr + cookie.offset + 3)
+//	);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
 	/* Find model name */
 	model_name_size = sizeof(model_name) - 1;
 	ret = id_find_string(&cookie, ID_KEY_model_name, model_name, &model_name_size);
@@ -248,14 +269,97 @@ int logic_dump_serialization_info(void)
 		return ret;
 	}
 
+	/* Find platform */
+	model_hardware_platform_size = sizeof(hardware_platform) - 1;
+	ret = id_find_string(&cookie, ID_KEY_hardware_platform, hardware_platform, &model_hardware_platform_size);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Reinitialise cookie back to the root */
+	ret = id_init_cookie(&id_data, &cookie);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* find /cpu0_group from root */
+	ret = id_find_dict(&cookie, ID_KEY_cpu0_group, IDENUM_DICT);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Find type */
+	model_type_size = sizeof(model_type) - 1;
+	ret = id_find_string(&cookie, ID_KEY_type, model_type, &model_type_size);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Find number */
+	ret = id_find_number(&cookie, ID_KEY_number, &model_number);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Find speed_mhz */
+	ret = id_find_number(&cookie, ID_KEY_speed_mhz, &speed);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Find grade */
+	model_grade_size = sizeof(model_grade) - 1;
+	ret = id_find_string(&cookie, ID_KEY_temp_class, model_grade, &model_grade_size);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Reinitialise cookie back to the root */
+	ret = id_init_cookie(&id_data, &cookie);
+	if (ret != ID_EOK) {
+		printf("%s:%d ret %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+
 	model_name[model_name_size] = '\0';
+	model_type[model_type_size] = '\0';
+	model_grade[model_grade_size] = '\0';
+	hardware_platform[model_hardware_platform_size] = '\0';
 	serial_number[serial_number_size] = '\0';
 
+	printf("\nID data ROM  : Gen 2\n");
+	printf("Model        : %.*s%u ", model_type_size, model_type, model_number);
+	if (!strncmp(hardware_platform, "t", 2))
+		printf("Torpedo");
+	else if (!strncmp(hardware_platform, "lv", 2))
+		printf("SOM-LV");
+	else if (!strncmp(hardware_platform, "m2", 2))
+		printf("SOM-M2");
+	printf("\n");
+	printf("Version Code : -%u\n", version_code);
+	printf("Temp Grade   : ");
+	if (!strncmp(model_grade, "i", 1))
+		printf("Industrial");
+	else if (!strncmp(model_grade, "c", 1))
+		printf("Commercial");
+	else if (!strncmp(model_grade, "x", 1))
+		printf("Extended");
+	printf("\n");
+	printf("Max Speed    : %uMHz\n", speed);
 	printf("Part Number  : %u\n", part_number);
 	printf("Model Name   : %.*s\n", model_name_size, model_name);
 	printf("Serial Number: %.*s\n", serial_number_size, serial_number);
-	setenv("logic_serial", serial_number);
+	printf("\n");
 
+	setenv("logic_serial", serial_number);
+	
 	return 0;
 }
 

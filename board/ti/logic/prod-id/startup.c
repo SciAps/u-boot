@@ -201,7 +201,7 @@ int id_startup(struct id_data *data, int (*setup_id_chip)(void), int (*shutdown_
 		ret = _id_startup(data, 1);
 		data->mem_ptr = mem_ptr;
 		if (!ret) {
-			id_printf("Found new Product ID data at %p\n", mem_ptr);
+			printf("Product ID data cached to: %p\n", mem_ptr);
 			return ret;
 		}
 	}
@@ -212,9 +212,10 @@ int id_startup(struct id_data *data, int (*setup_id_chip)(void), int (*shutdown_
 		id_error("%s: setup_id_chip failed!", __FUNCTION__);
 		return ret;
 	}
-	ret = _id_startup(data, 0);
 	if (!ret)
-		id_printf("Cache new Product ID data from AT24 to %p\n", mem_ptr);
+		printf("Product ID data cached to: %p\n", mem_ptr);
+
+	ret = _id_startup(data, 0);
 	ret2 = (*shutdown_id_chip)();
 	if (ret2)
 		id_error("%s: shutdown_id_chip failed!", __FUNCTION__);

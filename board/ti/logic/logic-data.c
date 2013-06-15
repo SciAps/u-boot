@@ -499,40 +499,36 @@ int _fetch_production_data(void)
 		gpio_i2c_set_pin_level(GPIO_I2C_SCLK, 1);
 	}
 
-	printf("Read production data: ");
-
 	if (identify_device()) {
-		printf("failed to identify device!\n");
+		printf("failed to identify ID device!\n");
 		err = -1;
 		goto out;
 	}
 
 	if (read_user_zone(0, 0, (unsigned char *)&product_id_data.d.u_zone0, sizeof(product_id_data.d.u_zone0))) {
-		printf("failed!\n");
+		printf("failed to read ID device!\n");
 		err = -1;
 		goto out;
 	}
 
 	/* If the header doesn't match, we can't map any of the data */
 	if (extract_header_version(&product_id_data, &header_version)) {
-		printf("failed - invalid header version %d!\n", header_version);
+		printf("ID device read failed - invalid header version %d!\n", header_version);
 		err = -2;
 		goto out;
 	}
 
 	if (read_user_zone(0, 32, (unsigned char *)&product_id_data.d.zone1, sizeof(product_id_data.d.zone1))) {
-		printf("failed reading zone1 data!\n");
+		printf("failed reading ID device zone1 data!\n");
 		err = -3;
 		goto out;
 	}
 
 	if (read_user_zone(0, 64, (unsigned char *)&product_id_data.d.zone2, sizeof(product_id_data.d.zone2))) {
-		printf("failed reading zone2 data!\n");
+		printf("failed reading ID device zone2 data!\n");
 		err = -4;
 		goto out;
 	}
-
-	printf("done\n");
 
 	production_data_valid = 1;
 	/* Correct endianess issues */
@@ -547,7 +543,7 @@ int _fetch_production_data(void)
 	   reading it if we know it can't fit in the productID chip */
 	if (2 + sizeof(product_id_data.d.wifi_config_data.data) / devptr->zonesize < devptr->zones) {
 		if (read_user_zone(2, 0, (unsigned char *)&product_id_data.d.wifi_config_data.data, sizeof(product_id_data.d.wifi_config_data.data))) {
-			printf("failed reading wifi_config data!\n");
+			printf("failed reading wifi_config data from ID device!\n");
 		} else
 			product_id_data.d.wifi_config_data.valid = 1;
 	}
@@ -583,6 +579,8 @@ void _dump_production_data(void)
 	if (!production_data_valid)
 		return;
 
+	printf("\nID data ROM  : Gen 1\n");
+	
 	/* Print out the name, model number, and set MAC addresses */
 	extract_product_id_part_number(&product_id_data, buf, sizeof(buf));
 	printf("Part Number  : %s\n", buf);
@@ -609,6 +607,7 @@ void _dump_production_data(void)
 			printf("LAN[%d] = %02x:%02x:%02x:%02x:%02x:%02x\n",
 				i, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	}
+	printf("\n");
 }
 
 #ifdef CONFIG_OMAP3_LOGIC_USE_NEW_PRODUCT_ID
