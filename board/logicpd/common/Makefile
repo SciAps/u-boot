@@ -23,17 +23,25 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).o
+LIB	= $(obj)liblogicpd.o
 
-COBJS-y	:= omap3logic.o readeeprom.o
+PRODIDOBJS :=  query.o crc-15.o \
+	extract.o type.o size.o array.o
 
+COBJS-y = $(PRODIDOBJS)
 
-COBJS	:= $(sort $(COBJS-y))
-SRCS	:= $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
+COBJS   := $(COBJS-y)
+SRCS    := $(COBJS:.o=.c)
+OBJS    := $(addprefix $(obj),$(COBJS))
 
-$(LIB):	$(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+$(LIB):	$(obj).depend $(COBJS)
+	$(call cmd_link_o_target, $(COBJS) $(SOBJS))
+
+clean:
+	rm -f $(OBJS)
+
+distclean:	clean
+	rm -f $(LIB) core *.bak .depend
 
 #########################################################################
 
@@ -42,3 +50,4 @@ include $(SRCTREE)/rules.mk
 
 sinclude $(obj).depend
 
+#########################################################################

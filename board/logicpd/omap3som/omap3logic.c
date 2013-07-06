@@ -137,6 +137,23 @@ int board_init(void)
 	return 0;
 }
 
+
+#ifdef CONFIG_SPL_BUILD
+
+/*
+ * Routine: get_board_mem_timings
+ * Description: If we use SPL then there is no x-loader nor config header
+ * so we have to setup the DDR timings ourself on both banks.
+ */
+void get_board_mem_timings(struct board_sdrc_timings *timings)
+{
+
+	struct id_data *iddata;
+	read_eeprom(iddata);
+}
+
+#endif
+
 #if defined(CONFIG_GENERIC_MMC) && !defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
