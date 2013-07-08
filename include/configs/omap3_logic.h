@@ -27,6 +27,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define DEBUG
+
 /*
  * High Level Configuration Options
  */
@@ -141,7 +143,7 @@
 #define CONFIG_SYS_I2C_SLAVE		1
 #define CONFIG_I2C_MULTI_BUS
 
-#define CONFIG_SYS_EEPROM_BUS_NUM 	3
+#define CONFIG_SYS_EEPROM_BUS_NUM 	2
 #define CONFIG_SYS_I2C_EEPROM_ADDR	0x50
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 2
 
@@ -408,7 +410,7 @@
  * header. That is 0x800FFFC0--0x80100000 should not be used for any
  * other needs.
  */
-#define CONFIG_SYS_TEXT_BASE		0x80100000
+#define CONFIG_SYS_TEXT_BASE		0x80400000
 #define CONFIG_SYS_SPL_MALLOC_START	0x80208000
 #define CONFIG_SYS_SPL_MALLOC_SIZE	0x100000
 

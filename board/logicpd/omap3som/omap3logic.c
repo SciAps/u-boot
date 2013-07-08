@@ -149,7 +149,10 @@ void get_board_mem_timings(struct board_sdrc_timings *timings)
 {
 
 	struct id_data *iddata;
-	read_eeprom(iddata);
+	if(read_eeprom(iddata)){
+		printf("Error: reading eeprom");
+	}
+
 }
 
 #endif

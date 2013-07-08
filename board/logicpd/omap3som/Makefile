@@ -27,7 +27,6 @@ LIB	= $(obj)lib$(BOARD).o
 
 COBJS-y	:= omap3logic.o readeeprom.o
 
-
 COBJS	:= $(sort $(COBJS-y))
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
